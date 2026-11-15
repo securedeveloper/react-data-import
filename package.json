@@ -1,0 +1,15 @@
+{
+  "name": "react-data-import",
+  "version": "0.0.1",
+  "description": "Import .xlsx and .csv files into React apps as { columns, data } datasets. Built on javascript-excel. (Planned — not usable yet.)",
+  "type": "module",
+  "main": "index.js",
+  "exports": "./index.js",
+  "files": ["index.js", "README.md", "LICENSE"],
+  "keywords": ["react", "excel", "xlsx", "csv", "spreadsheet"],
+  "author": "Afzal Ahmad",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/securedeveloper/react-data-import.git" },
+  "homepage": "https://github.com/securedeveloper/react-data-import#readme",
+  "bugs": { "url": "https://github.com/securedeveloper/react-data-import/issues" }
+}
