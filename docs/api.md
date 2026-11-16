@@ -1,6 +1,6 @@
 # react-data-import 1.0: API design
 
-Status: **proposal for review** (RDI-0). No code is written until Afzal decides the questions in [§12](#12-open-questions). The design builds on **javascript-excel 2.0.0-alpha.2**: its reader (`read`, `readSheetNames`, `detectFormat`), its CSV reader (`readCsv`) and `toDataset` with `skipTotals`. It names the additions it needs from javascript-excel in [§10](#10-what-belongs-in-javascript-excel).
+Status: **design, decided** (RDI-0). Afzal accepted all fourteen recommendations in [§12](#12-decisions) on 2026-11-16. The design builds on **javascript-excel 2.0.0-alpha.2**: its reader (`read`, `readSheetNames`, `detectFormat`), its CSV reader (`readCsv`) and `toDataset` with `skipTotals`. It names the additions it needs from javascript-excel in [§10](#10-what-belongs-in-javascript-excel).
 
 The library imports an `.xlsx` or `.csv` file chosen by the user and returns a dataset, `{ columns, data }`, the same shape react-data-export writes. So export → import round-trips.
 
@@ -19,7 +19,7 @@ Conventions: `[to verify]` marks a fact to be checked before code relies on it. 
 9. [Big files: limits, preview, worker, abort](#9-big-files-limits-preview-worker-abort)
 10. [What belongs in javascript-excel](#10-what-belongs-in-javascript-excel)
 11. [Security](#11-security)
-12. [Open questions](#12-open-questions)
+12. [Decisions](#12-decisions)
 
 ---
 
@@ -59,7 +59,7 @@ input ──► 1 detect ──► 2 read ──► 3 pick sheet ──► 4 hea
           (+ name/MIME)  readCsv                     (§5.1)        (skipTotals) (§5.2)       (§6)        (§7)
 ```
 
-1. **Detect the format from the bytes**, not from the file name. `detectFormat` (JSE §5.2) recognises zip and CFB containers. A zip is read as xlsx. CSV has no signature, so it's taken as CSV when the name or MIME type says so (`.csv`, `.tsv`, `.txt`, `text/csv`, `text/plain`, `text/tab-separated-values`) or `format: 'csv'` is given ([Q11](#12-open-questions)). Anything else is rejected with javascript-excel's `UNSUPPORTED_FORMAT`, which keeps `details.format` (`'cfb'` is a legacy `.xls` or an encrypted file, `'xlsb'`, `'ods'`, `'unknown'`).
+1. **Detect the format from the bytes**, not from the file name. `detectFormat` (JSE §5.2) recognises zip and CFB containers. A zip is read as xlsx. CSV has no signature, so it's taken as CSV when the name or MIME type says so (`.csv`, `.tsv`, `.txt`, `text/csv`, `text/plain`, `text/tab-separated-values`) or `format: 'csv'` is given ([Q11](#12-decisions)). Anything else is rejected with javascript-excel's `UNSUPPORTED_FORMAT`, which keeps `details.format` (`'cfb'` is a legacy `.xls` or an encrypted file, `'xlsb'`, `'ods'`, `'unknown'`).
 2. **Read.**
    - xlsx: `read(bytes, { sheets: [chosen], styles: false, richText: 'plain', limits, signal, onProgress })`. Only the chosen sheet is parsed; `styles: false` is faster and date detection still works (JSE §5.2). Formula text is kept (`formulas: true`), only so that `skipTotals: 'auto'` can recognise a totals row. It is never evaluated.
    - CSV: `readCsv(bytes, { delimiter: 'auto', encoding, inferTypes: false, maxRows, signal })`. Type inference happens in step 6, so CSV and xlsx get the same rules.
@@ -70,7 +70,7 @@ input ──► 1 detect ──► 2 read ──► 3 pick sheet ──► 4 hea
 7. **Map** the file's columns to the app's schema, if a schema is given ([§6](#6-column-mapping)).
 8. **Validate** each row with the app's function or schema ([§7](#7-validation)), collecting issues per row and field.
 
-Steps 1–7 are framework-free and, under this proposal, live in javascript-excel as one function, `importDataset` ([§10](#10-what-belongs-in-javascript-excel), [Q1](#12-open-questions)). `importFile` is that function plus `File` handling, worker routing and validation.
+Steps 1–7 are framework-free and, under this proposal, live in javascript-excel as one function, `importDataset` ([§10](#10-what-belongs-in-javascript-excel), [Q1](#12-decisions)). `importFile` is that function plus `File` handling, worker routing and validation.
 
 ## 4. `importFile`
 
@@ -181,7 +181,7 @@ export interface ImportIssue {
 ```
 
 - **Round trip with react-data-export.** `columns` is a list of `{ title, key, … }`, which react-data-export accepts as `ColumnDef`s. So `exportDataset(result)` writes the file back. A file written by react-data-export comes back with its rows: `skipTotals: 'auto'` drops the `SUBTOTAL` totals row, and header groups come back flattened ([§5.1](#51-header-row)). A round-trip test belongs in RDI-6.
-- **`rowNumbers` is a parallel array**, so `data` rows hold only the file's columns ([Q13](#12-open-questions)). Issues use the same row numbers, so a UI can say "row 17: amount is not a number".
+- **`rowNumbers` is a parallel array**, so `data` rows hold only the file's columns ([Q13](#12-decisions)). Issues use the same row numbers, so a UI can say "row 17: amount is not a number".
 - **Typing `Row`.** `Row` is what the caller asserts. With a Standard Schema validator ([§7](#7-validation)) it is the schema's output type, and rows that fail are not in `data`. Without one it is a cast, as with `JSON.parse`.
 
 ### 4.3 Behaviour
@@ -189,7 +189,7 @@ export interface ImportIssue {
 - **Input.** A `File` gives `meta.fileName` and its MIME type for detection. A `Blob` or bytes are detected from content only. A string is CSV text. `importFile` reads a `File` with `arrayBuffer()` after checking `size` against `maxFileBytes`, so an oversized file is rejected before any bytes are loaded.
 - **Progress.** `ImportProgress` is `{ phase: 'read' | 'unzip' | 'parse' | 'dataset' | 'validate', ratio }`, non-decreasing. The `read`/`unzip`/`parse` phases come from javascript-excel. `dataset` and `validate` are counted in rows.
 - **Empty input.** A sheet or file with no cells resolves with no columns and no data, not an error. `importFile` reports it as a file-level issue (`EMPTY`, severity `warning`), so a UI can show "the file is empty" without a `try`.
-- **Several sheets.** One call imports one sheet. `meta.sheets` lists all of them, so a UI can offer a picker and call again with `sheet`. A whole-workbook import is a later addition ([Q12](#12-open-questions)).
+- **Several sheets.** One call imports one sheet. `meta.sheets` lists all of them, so a UI can offer a picker and call again with `sheet`. A whole-workbook import is a later addition ([Q12](#12-decisions)).
 
 ### 4.4 Errors
 
@@ -215,7 +215,7 @@ Misuse (an unknown `format`, a `header.rows` below 1, both `mapping` and an unma
 
 `header` accepts:
 
-- `'auto'` (default): detect ([Q3](#12-open-questions)).
+- `'auto'` (default): detect ([Q3](#12-decisions)).
 - A zero-based row index: like `toDataset`'s `headerRow`.
 - `{ row, rows, join }`: a header of `rows` rows starting at `row` (default: detected), flattened into one title per column with `join` (default `' / '`). Merged cells are expanded first, so a group title merged over three columns prefixes all three: `Q1 / Jan`, `Q1 / Feb`, `Q1 / Mar`. That is the header react-data-export's header groups write.
 - `false`: no header. Keys and titles are the column letters.
@@ -234,7 +234,7 @@ The heuristic is deliberately simple and deterministic, with no scoring weights 
 `types: 'infer'` (default) settles one `ColumnType` per column from its non-empty values:
 
 - **xlsx cells already have types.** Numbers, booleans, and dates (numbers with a date format, JSE §3.4.1) come typed from the reader. A column whose non-empty values are all one type gets that type. `date` and `datetime` are told apart by whether any value has a time part. A mix is `'mixed'`, and its values stay as read.
-- **Text that looks like numbers or dates** (always the case in CSV, and common in xlsx made by other tools) is converted only when **every** non-empty value in the column converts, under the rules of [§5.3](#53-locale-numbers-and-dates) ([Q4](#12-open-questions)). Otherwise the column keeps its text, and each failing value is reported as a `TYPE` issue (severity `warning`) only if the caller asked for that type explicitly. With all-or-nothing there is no threshold to tune, and a code column such as `007`, `012` stays text.
+- **Text that looks like numbers or dates** (always the case in CSV, and common in xlsx made by other tools) is converted only when **every** non-empty value in the column converts, under the rules of [§5.3](#53-locale-numbers-and-dates) ([Q4](#12-decisions)). Otherwise the column keeps its text, and each failing value is reported as a `TYPE` issue (severity `warning`) only if the caller asked for that type explicitly. With all-or-nothing there is no threshold to tune, and a code column such as `007`, `012` stays text.
 - **Explicit types**, `types: { amount: 'number', joined: 'date' }` (by key or title), force the conversion. Values that don't convert become `null` with a `TYPE` issue (severity `error`).
 - `'none'` returns values as read: xlsx typed, CSV all strings.
 - Leading/trailing whitespace is trimmed before conversion, never from strings that stay strings.
@@ -245,7 +245,7 @@ javascript-excel's CSV inference accepts only plain decimals and ISO 8601 dates,
 
 - `decimal` and `group` say how numbers are written. Defaults are `'.'` and `''`: plain numbers only, as the engine does today. With `{ decimal: ',', group: '.' }`, `1.234,56` is 1234.56, and a value that doesn't fit the pattern (for example `1,2,3`) does not convert.
 - `dateOrder` says how numeric dates are written: `'YMD'`, `'DMY'`, `'MDY'`, or `'auto'` (default). `'auto'` decides per column, and only when the data proves it: a first part above 12 means DMY, a second part above 12 means MDY. A column with no proof (every value has both parts ≤ 12), or with proof both ways, stays text with a `meta`-level warning `DATE_ORDER_AMBIGUOUS` asking for `dateOrder`.
-- There is no guessing from the browser's locale ([Q5](#12-open-questions)). A file's locale is the author's, not the reader's.
+- There is no guessing from the browser's locale ([Q5](#12-decisions)). A file's locale is the author's, not the reader's.
 
 These parsers are framework-free and belong in javascript-excel ([§10](#10-what-belongs-in-javascript-excel)).
 
@@ -314,7 +314,7 @@ export interface StandardSchemaLike<Output> {
 
 - **Two ways to validate, no dependency.**
   - A function: return nothing, a message, or issues.
-  - A **Standard Schema** object. Zod 3.24+, Valibot 1.0+ and ArkType 2.0+ implement that interface `[to verify]`, so `validate: z.object({ … })` works without adapters, and the result rows are the schema's output. Its issue paths map to `field` ([Q7](#12-open-questions)).
+  - A **Standard Schema** object. Zod 3.24+, Valibot 1.0+ and ArkType 2.0+ implement that interface `[to verify]`, so `validate: z.object({ … })` works without adapters, and the result rows are the schema's output. Its issue paths map to `field` ([Q7](#12-decisions)).
 - **Order:** field-level `FieldSpec.validate` and type issues come first, then the row validator.
 - **Invalid rows.** Rows with an `error` issue are **excluded** from `data` and listed in `issues` with their row number. `warning` issues keep the row. `validation: 'stop'` rejects at the first error with `VALIDATION_FAILED`.
 - **Async validators** are allowed (for example a uniqueness check against a server). They run one row at a time, in order, and check `signal` between rows. The docs will recommend batching remote checks after import rather than per row.
@@ -395,7 +395,7 @@ export interface DataImportRenderApi<Row> {
   - `getRootProps` adds no `role` or `tabIndex`, because a drop zone is not interactive by itself. The input inside it is the control.
   - The default render has an accessible name (`inputLabel`).
   - Status and errors are left to the app's live region (the example uses `role="status"`), with a recipe in the docs.
-- **Drops:** the first file is imported. When several files are dropped, the others are ignored, with a file-level `FILES_IGNORED` warning ([Q12](#12-open-questions)). Dropped directories are ignored.
+- **Drops:** the first file is imported. When several files are dropped, the others are ignored, with a file-level `FILES_IGNORED` warning ([Q12](#12-decisions)). Dropped directories are ignored.
 - **`accept`** is a convenience for the file dialog, not a check. Detection in [§3](#3-the-pipeline) decides what a file is.
 
 ### 8.3 `useColumnMapping` (headless)
@@ -414,13 +414,13 @@ export function useColumnMapping(result: ImportResult<unknown> | null, schema: I
 ```
 
 - State only: the app renders the selects or the drag-and-drop UI. `columns[].sample` holds the first few values, so a UI can show "E-mail: ada@…, grace@…".
-- Pair it with `useDataImport().applyMapping(mapping)`. A **styled** mapping UI is not in 1.0 ([Q6](#12-open-questions)). The playground (RDI-9) shows one built on this hook.
+- Pair it with `useDataImport().applyMapping(mapping)`. A **styled** mapping UI is not in 1.0 ([Q6](#12-decisions)). The playground (RDI-9) shows one built on this hook.
 
 ## 9. Big files: limits, preview, worker, abort
 
 ### 9.1 Limits
 
-- **`maxFileBytes`** is checked against `File.size` before any byte is read. Its default is javascript-excel's `maxInputBytes`, 256 MiB, which is measured (JSE §5.2) but is a server-sized ceiling. The docs will tell apps to set a limit that fits their use; no browser-specific default is invented here ([Q10](#12-open-questions)).
+- **`maxFileBytes`** is checked against `File.size` before any byte is read. Its default is javascript-excel's `maxInputBytes`, 256 MiB, which is measured (JSE §5.2) but is a server-sized ceiling. The docs will tell apps to set a limit that fits their use; no browser-specific default is invented here ([Q10](#12-decisions)).
 - **`maxRows`** caps data rows: CSV through `readCsv`'s `maxRows`, xlsx through the reader's `maxCells` and a row check. Exceeding it rejects with `LIMIT_EXCEEDED` (`details.limit: 'maxRows'`), except in preview, where it truncates.
 - **`limits`** passes javascript-excel's read limits through unchanged, and they stay on by default (zip bombs, cells, shared strings, XML depth; JSE §8).
 
@@ -439,7 +439,7 @@ Runs steps 1–6 on the first `rows` data rows (default 20) and returns `meta` w
 
 - `worker: WorkerClient` (from `javascript-excel/worker`, created by the app from its own two-line worker file, JSE §5.5) runs steps 1–7 in the worker, through a new worker operation for `importDataset` ([§10](#10-what-belongs-in-javascript-excel)). The worker sends back the dataset: plain rows, cloned once.
 - **Validation runs on the main thread**, because validators are functions. So does any `types` or `schema` entry that holds a function (`FieldSpec.validate`).
-- `useDataImport` and `<DataImport>` accept `worker` plus `workerThreshold` (bytes): files at or above it go to the worker, smaller ones stay on the main thread, where the round trip costs more than it saves. The javascript-excel playground uses 1 MiB. The default is a question, not a measurement yet ([Q9](#12-open-questions)).
+- `useDataImport` and `<DataImport>` accept `worker` plus `workerThreshold` (bytes): files at or above it go to the worker, smaller ones stay on the main thread, where the round trip costs more than it saves. The javascript-excel playground uses 1 MiB. The default is a question, not a measurement yet ([Q9](#12-decisions)).
 - Without `worker`, everything runs on the main thread. javascript-excel's reader and `readCsv` are chunked where they can be (`readCsv` yields between chunks), but a large xlsx blocks the thread while it parses.
 
 ### 9.4 Abort
@@ -484,34 +484,34 @@ The file is untrusted: an attacker controls every byte (JSE §8). On top of java
 | Exfiltration | nothing leaves the browser: no network requests, no `eval`, no inline workers (the app's worker file works under a strict CSP) |
 | ReDoS in locale parsing | hand-written scanners, as in javascript-excel's CSV parser |
 
-## 12. Open questions
+## 12. Decisions
 
-Each has a recommendation. Accepting all of them means the text above stands as written.
+Each question had a recommendation. All fourteen were accepted on 2026-11-16, so the text above stands as written.
 
-**Q1. Where does the pipeline live?** The engine's building blocks only, with the pipeline written in react-data-import; or the pipeline itself in javascript-excel (`javascript-excel/import`), with `importFile` adding `File` handling, the worker and validation? *Recommendation:* the pipeline in javascript-excel. That follows the family rule and JSE §12 Q13, gives Vue and vanilla users the same import, and lets the worker run it as one operation.
+**Q1. Where does the pipeline live?** The engine's building blocks only, with the pipeline written in react-data-import; or the pipeline itself in javascript-excel (`javascript-excel/import`), with `importFile` adding `File` handling, the worker and validation? *Decided (2026-11-16):* the pipeline in javascript-excel. That follows the family rule and JSE §12 Q13, gives Vue and vanilla users the same import, and lets the worker run it as one operation.
 
-**Q2. Function names.** `importFile` / `previewFile` / `useDataImport` / `<DataImport>` / `useColumnMapping`, as in the plan. *Recommendation:* keep them. They mirror react-data-export's `exportDataset` / `useExcelExport` / `<ExcelExport>`.
+**Q2. Function names.** `importFile` / `previewFile` / `useDataImport` / `<DataImport>` / `useColumnMapping`, as in the plan. *Decided (2026-11-16):* keep them. They mirror react-data-export's `exportDataset` / `useExcelExport` / `<ExcelExport>`.
 
-**Q3. Header detection by default.** `header: 'auto'` (detect, report, fall back to row 0) or `0` (as `toDataset`)? *Recommendation:* `'auto'`. Exports from other tools often start with title rows, and the result reports what was detected with a confidence, so a UI can let the user correct it.
+**Q3. Header detection by default.** `header: 'auto'` (detect, report, fall back to row 0) or `0` (as `toDataset`)? *Decided (2026-11-16):* `'auto'`. Exports from other tools often start with title rows, and the result reports what was detected with a confidence, so a UI can let the user correct it.
 
-**Q4. Type inference rule.** All-or-nothing per column, or a majority threshold? *Recommendation:* all-or-nothing. It has no threshold to tune, keeps code columns (`007`) as text, and an explicit `types` entry forces a conversion and reports each failure.
+**Q4. Type inference rule.** All-or-nothing per column, or a majority threshold? *Decided (2026-11-16):* all-or-nothing. It has no threshold to tune, keeps code columns (`007`) as text, and an explicit `types` entry forces a conversion and reports each failure.
 
-**Q5. Locale.** Explicit `locale` only, or guess from the browser? *Recommendation:* explicit, with per-column `dateOrder: 'auto'` that decides only when the data proves it, and otherwise warns. A file's locale is its author's, not the reader's browser's.
+**Q5. Locale.** Explicit `locale` only, or guess from the browser? *Decided (2026-11-16):* explicit, with per-column `dateOrder: 'auto'` that decides only when the data proves it, and otherwise warns. A file's locale is its author's, not the reader's browser's.
 
-**Q6. Mapping UI.** Headless only (`useColumnMapping`), or also a styled component? *Recommendation:* headless only in 1.0, with the playground showing a styled example built on the hook. That answers the plan's open question the same way `<DataImport>` is unstyled. A styled UI can come later as a separate entry if users ask.
+**Q6. Mapping UI.** Headless only (`useColumnMapping`), or also a styled component? *Decided (2026-11-16):* headless only in 1.0, with the playground showing a styled example built on the hook. That answers the plan's open question the same way `<DataImport>` is unstyled. A styled UI can come later as a separate entry if users ask.
 
-**Q7. Schema libraries.** A plain function only, or Standard Schema too? *Recommendation:* both. Standard Schema is a structural interface, so supporting Zod, Valibot and ArkType costs no dependency, and the rows get the schema's output type.
+**Q7. Schema libraries.** A plain function only, or Standard Schema too? *Decided (2026-11-16):* both. Standard Schema is a structural interface, so supporting Zod, Valibot and ArkType costs no dependency, and the rows get the schema's output type.
 
-**Q8. Formulas and error cells.** Cached values only, and error cells as `null` plus an `ERROR_CELL` warning (default) or kept as `{ error }`? *Recommendation:* as designed, with formula text never in `data`. Anyone who needs formula text can use javascript-excel's `read` with `toDataset({ values: 'cell' })`.
+**Q8. Formulas and error cells.** Cached values only, and error cells as `null` plus an `ERROR_CELL` warning (default) or kept as `{ error }`? *Decided (2026-11-16):* as designed, with formula text never in `data`. Anyone who needs formula text can use javascript-excel's `read` with `toDataset({ values: 'cell' })`.
 
-**Q9. Worker.** Explicit `worker` client plus `workerThreshold`, or no worker in 1.0? *Recommendation:* explicit client (the app owns the worker file, JSE §12 Q15). The default `workerThreshold` gets measured in RDI-2 on the fixture corpus, not picked now; until then it's 1 MiB, as in the javascript-excel playground.
+**Q9. Worker.** Explicit `worker` client plus `workerThreshold`, or no worker in 1.0? *Decided (2026-11-16):* explicit client (the app owns the worker file, JSE §12 Q15). The default `workerThreshold` gets measured in RDI-2 on the fixture corpus, not picked now; until then it's 1 MiB, as in the javascript-excel playground.
 
-**Q10. Default `maxFileBytes`.** javascript-excel's 256 MiB, or a lower browser default? *Recommendation:* inherit 256 MiB (measured, JSE §5.2), and have the docs and the `<DataImport>` example set an app-specific limit. A lower default would be a number nobody measured.
+**Q10. Default `maxFileBytes`.** javascript-excel's 256 MiB, or a lower browser default? *Decided (2026-11-16):* inherit 256 MiB (measured, JSE §5.2), and have the docs and the `<DataImport>` example set an app-specific limit. A lower default would be a number nobody measured.
 
-**Q11. CSV detection.** CSV only when the name, MIME type or `format` says so, or also for any input that decodes as text? *Recommendation:* name, MIME type or `format` only. Parsing arbitrary bytes as CSV turns a wrong file into garbage rows instead of a clear `UNSUPPORTED_FORMAT`.
+**Q11. CSV detection.** CSV only when the name, MIME type or `format` says so, or also for any input that decodes as text? *Decided (2026-11-16):* name, MIME type or `format` only. Parsing arbitrary bytes as CSV turns a wrong file into garbage rows instead of a clear `UNSUPPORTED_FORMAT`.
 
-**Q12. Several sheets and several files.** One sheet per call (with `meta.sheets` for a picker) and one file per drop, or `sheet: 'all'` and multi-file drops now? *Recommendation:* one and one in 1.0. A whole-workbook import (`importWorkbook`, a dataset per sheet) can be added later without changing `importFile`.
+**Q12. Several sheets and several files.** One sheet per call (with `meta.sheets` for a picker) and one file per drop, or `sheet: 'all'` and multi-file drops now? *Decided (2026-11-16):* one and one in 1.0. A whole-workbook import (`importWorkbook`, a dataset per sheet) can be added later without changing `importFile`.
 
-**Q13. Row numbers.** A parallel `rowNumbers` array, or a `__row` key in each row? *Recommendation:* the parallel array. Rows keep exactly the file's (or schema's) keys, so they can go straight back into react-data-export, and no key can collide with a column.
+**Q13. Row numbers.** A parallel `rowNumbers` array, or a `__row` key in each row? *Decided (2026-11-16):* the parallel array. Rows keep exactly the file's (or schema's) keys, so they can go straight back into react-data-export, and no key can collide with a column.
 
-**Q14. Engine order.** The [§10](#10-what-belongs-in-javascript-excel) additions ship in a javascript-excel minor before RDI-2/3/4. *Recommendation:* yes. Split them into JSE tasks in the order of the table, with `importDataset`, `ReadOptions.maxRows` and `detectHeader` first, so RDI-2 (scaffold, `importFile`, hook) can start on them.
+**Q14. Engine order.** The [§10](#10-what-belongs-in-javascript-excel) additions ship in a javascript-excel minor before RDI-2/3/4. *Decided (2026-11-16):* yes. Split them into JSE tasks in the order of the table, with `importDataset`, `ReadOptions.maxRows` and `detectHeader` first, so RDI-2 (scaffold, `importFile`, hook) can start on them.
