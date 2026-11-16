@@ -107,8 +107,12 @@ export interface ImportOptions<Row = Record<string, unknown>> {
 }
 
 export interface ImportResult<Row = Record<string, unknown>> {
+  /** One per column; with a schema, one per schema field (an unmapped field has title and letter '' and type 'empty'). */
   columns: ImportedColumn[];
-  /** Valid rows only: rows with an `error` issue are left out and listed in `issues`. */
+  /**
+   * Valid rows only: rows with an `error` issue are left out and listed in `issues`.
+   * With a schema, every row has every schema field; an unmapped one is null.
+   */
   data: Row[];
   /** Spreadsheet row of each entry in `data`. */
   rowNumbers: number[];

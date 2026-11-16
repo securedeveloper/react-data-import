@@ -134,7 +134,7 @@ export interface ImportOptions<Row> {
 
 ```ts
 export interface ImportResult<Row> {
-  /** One per column. With a schema: one per mapped field, in schema order. */
+  /** One per column. With a schema: one per schema field, in schema order (an unmapped field: title and letter '', type 'empty'). */
   columns: ImportedColumn[];
   /** Null-prototype objects keyed by column key (or field name with a schema). */
   data: Row[];
@@ -290,6 +290,7 @@ const result = await importFile(file, {
 - Titles and aliases are compared after normalisation: case-folded, with whitespace, `_`, `-` and `.` removed, and accents stripped (NFKD). So `E-mail`, `email` and `E MAIL` match.
 - Each field takes the first matching column in file order. A column is taken at most once.
 - No fuzzy matching or edit distance: a near-miss stays unmapped and is shown to the user ([§8.3](#83-usecolumnmapping-headless)), rather than being guessed wrong.
+- **Every row has every schema field.** A field without a column is `null` in each row and still has an entry in `columns`, so rows always have the schema's shape and a validator's `.nullable()` accepts them (javascript-excel JSE-21, from 2.0.0-alpha.4).
 - A required field without a column gives a file-level `MAPPING_MISSING` issue (severity `error`), and the rows are still returned, so a mapping UI can fix it and re-apply without re-reading the file.
 - `mapping` overrides the automatic result, field by field.
 

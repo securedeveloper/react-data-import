@@ -130,6 +130,14 @@ describe('schema and validation', () => {
     expect(r.issues).toEqual([{ row: 2, field: 'name', code: 'INVALID', message: 'too short', severity: 'error' }]);
   });
 
+  it('an unmapped optional field is null in every row, so .nullable() accepts it (javascript-excel JSE-21)', async () => {
+    const Row = z.object({ email: z.string(), phone: z.string().nullable() });
+    const r = await importFile('E-mail\nada@x.org\n', { schema: { fields: { email: { aliases: ['E-mail'] }, phone: {} } }, validate: Row });
+    expect(r.issues).toEqual([]);
+    expect(r.data).toEqual([{ email: 'ada@x.org', phone: null }]);
+    expect(r.columns.map((c) => [c.key, c.letter, c.type])).toEqual([['email', 'A', 'string'], ['phone', '', 'empty']]);
+  });
+
   it('rows with engine errors (TYPE, REQUIRED) are left out too', async () => {
     const r = await importFile('n\n1\nx\n', { types: { n: 'number' } });
     expect(r.data).toEqual([row({ n: 1 })]);

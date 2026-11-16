@@ -18,9 +18,9 @@ export const contacts: ImportSchema = {
 export const Contact = z.object({
   name: z.string({ error: 'Name is empty' }).trim().min(1, 'Name is empty'),
   email: z.email('Not an e-mail address'),
-  // nullish: an optional field the user leaves unmapped is absent from the row.
-  joined: z.date().nullish(),
-  amount: z.number().nonnegative('Amount is negative').nullish(),
+  // An optional field the user leaves unmapped is null in every row.
+  joined: z.date().nullable(),
+  amount: z.number().nonnegative('Amount is negative').nullable(),
 });
 export type Contact = z.infer<typeof Contact>;
 
@@ -28,6 +28,6 @@ export type Contact = z.infer<typeof Contact>;
 export const CONTACT_SOURCE = `z.object({
   name: z.string({ error: 'Name is empty' }).trim().min(1, 'Name is empty'),
   email: z.email('Not an e-mail address'),
-  joined: z.date().nullish(),
-  amount: z.number().nonnegative('Amount is negative').nullish(),
+  joined: z.date().nullable(),
+  amount: z.number().nonnegative('Amount is negative').nullable(),
 })`;
