@@ -2,7 +2,7 @@
 
 **Pull request → merge to `main` → publish to npm.** Merging is the approval. A release is just a pull request that changes the package version. When it merges, `.github/workflows/release.yml` publishes that version to npm with trusted publishing (OIDC, no npm token, provenance attached automatically). Then it creates the `v<version>` tag and a GitHub Release.
 
-The published package is the repository root (`react-data-import`).
+The published package is `packages/react-data-import` (`react-data-import`). The repository root is a private npm workspace with the package and `apps/playground`.
 
 ## 1. Add a changeset to your pull request
 
@@ -22,16 +22,16 @@ When a release makes sense (Afzal or the team lead decides):
 
 ```sh
 git switch -c release-<version> origin/main
-npm run version-packages     # changeset version + lockfile sync
+npm run version-packages     # changeset version + version constant + lockfile sync
 git diff                     # review the version bump and CHANGELOG.md
 ```
 
 `npm run version-packages` runs `changeset version`, which:
 - consumes the pending changesets,
-- bumps `package.json`,
-- writes `CHANGELOG.md`.
+- bumps `packages/react-data-import/package.json`,
+- writes `packages/react-data-import/CHANGELOG.md`.
 
-It then runs `npm install --package-lock-only`, so `package-lock.json` carries the new version too.
+It then runs `scripts/sync-version.mjs`, which sets the `version` constant in `packages/react-data-import/src/index.ts` to the new version (`changeset version` never edits source files). It fails if it can't find exactly one such constant, so renaming the constant can't silently break the sync. Last, `npm install --package-lock-only` puts the new version into `package-lock.json` too.
 
 Open the pull request. Its **Release dry run** CI job shows what merging would do. The "Release preview" step says which version would be published, or "no release". The job also runs `npm publish --dry-run` with the dist-tag that would be used.
 
