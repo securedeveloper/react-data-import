@@ -20,8 +20,8 @@ jobs:
       fail-fast: false
       matrix:
         node: [22, 24, 26]
-        # React 18 and 19 (react-data-import's peer range is >=18 <20).
-        react: [18, 19]
+        # React 17, 18 and 19 (react-data-import's peer range is >=17 <20, docs/api.md §1–2).
+        react: [17, 18, 19]
     env:
       # Asserted by the test suite, so a job can't silently run on the wrong React.
       REACT_MAJOR: ${{ matrix.react }}
@@ -39,7 +39,7 @@ jobs:
         if: matrix.react == 19
         run: npm ci
 
-      # React 18: rewrite the dev ranges and resolve a fresh tree (see the script).
+      # React 17/18: rewrite the dev ranges and resolve a fresh tree (see the script).
       - name: Install (React ${{ matrix.react }})
         if: matrix.react != 19
         run: node scripts/use-react.mjs ${{ matrix.react }}
@@ -122,7 +122,7 @@ jobs:
       matrix:
         # Every minor from the supported floor (5.0) up, same set as the other family packages.
         ts: ['5.0', '5.1', '5.2', '5.3', '5.4', '5.5', '5.6', '5.7', '5.8', '5.9', '6.0', '7.0']
-        react: [18, 19]
+        react: [17, 18, 19]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

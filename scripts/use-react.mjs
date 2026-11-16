@@ -1,7 +1,7 @@
 // CI matrix helper: switch the React major used by the library's tests.
-// Usage: node scripts/use-react.mjs 18|19
+// Usage: node scripts/use-react.mjs 17|18|19
 //
-// react-data-import supports React 18 and 19. Rewrites the react / react-dom /
+// react-data-import supports React 17, 18 and 19 (docs/api.md §1–2). Rewrites the react / react-dom /
 // @types / Testing Library devDependency ranges of packages/react-data-import
 // (and the playground's), then resolves a fresh tree without the lockfile, so
 // npm gives one consistent set. This edits the working tree and replaces
@@ -13,6 +13,8 @@ import { rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 const sets = {
+  // RTL 13+ requires React 18 (createRoot); 12.1.5 is the last line supporting React 17.
+  17: { react: '^17.0.2', 'react-dom': '^17.0.2', '@types/react': '^17.0.0', '@types/react-dom': '^17.0.0', '@testing-library/react': '^12.1.5' },
   18: { react: '^18.3.1', 'react-dom': '^18.3.1', '@types/react': '^18.3.0', '@types/react-dom': '^18.3.0', '@testing-library/react': '^16.3.0' },
   19: null, // the committed default
 };

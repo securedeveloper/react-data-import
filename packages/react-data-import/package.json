@@ -46,7 +46,7 @@
     "node": ">=22"
   },
   "peerDependencies": {
-    "react": ">=18 <20"
+    "react": ">=17 <20"
   },
   "scripts": {
     "build": "tsdown",

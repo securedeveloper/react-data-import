@@ -2,7 +2,7 @@
 // packed tarball (what npm users install) for each TypeScript version,
 // @types/react major and moduleResolution mode.
 //
-//   node scripts/consumer-ts.mjs --ts 5.0,5.9,7.0 --react 18,19 --resolution node16,nodenext,bundler
+//   node scripts/consumer-ts.mjs --ts 5.0,5.9,7.0 --react 17,18,19 --resolution node16,nodenext,bundler
 //
 // Every option also reads an env var (CONSUMER_TS, CONSUMER_REACT, CONSUMER_RESOLUTION).
 // Without --tarball it packs packages/react-data-import, so run
@@ -21,7 +21,7 @@ import { parseArgs } from 'node:util';
 const { values } = parseArgs({
   options: {
     ts: { type: 'string', default: process.env.CONSUMER_TS ?? '5.0,5.1,5.2,5.3,5.4,5.5,5.6,5.7,5.8,5.9,6.0,7.0' },
-    react: { type: 'string', default: process.env.CONSUMER_REACT ?? '18,19' },
+    react: { type: 'string', default: process.env.CONSUMER_REACT ?? '17,18,19' },
     resolution: { type: 'string', default: process.env.CONSUMER_RESOLUTION ?? 'node16,nodenext,bundler' },
     tarball: { type: 'string', default: process.env.CONSUMER_TARBALL },
     keep: { type: 'boolean', default: false },

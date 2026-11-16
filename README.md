@@ -16,7 +16,7 @@ Watch the repository for the first real release.
 ## Status
 
 - **1.0 is designed:** [docs/api.md](docs/api.md) (decided 2026-11-16) covers `importFile`, `useDataImport`, an unstyled `<DataImport>` drop zone and a headless `useColumnMapping`, built on javascript-excel's `javascript-excel/import`.
-- **The workspace is scaffolded** (RDI-1): the package builds, tests on React 18 and 19, and is checked as a packed tarball. There is no import feature yet.
+- **The workspace is scaffolded** (RDI-1): the package builds, tests on React 17, 18 and 19, and is checked as a packed tarball. There is no import feature yet.
 - **0.0.1 on npm only reserves the name.**
 
 ## Repository layout
@@ -39,11 +39,11 @@ npm test                     # Vitest + React Testing Library (jsdom)
 npm run build                # library (tsdown) + playground (Vite)
 npm run lint:pkg             # publint + are-the-types-wrong
 npm run smoke                # packs the library; checks "use client", ESM import, CJS require, types
-npm run consumer-ts -- --ts 5.0,7.0 --react 18,19   # consumer TypeScript matrix
+npm run consumer-ts -- --ts 5.0,7.0 --react 17,18,19   # consumer TypeScript matrix
 npm run test:release         # release script unit tests
 ```
 
-CI runs Node 22, 24 and 26 against React 18 and 19. To try React 18 locally: `node scripts/use-react.mjs 18` (it rewrites dev ranges and node_modules; restore with `git checkout -- package-lock.json '*/*/package.json' && npm ci`).
+CI runs Node 22, 24 and 26 against React 17, 18 and 19. To try another React major locally: `node scripts/use-react.mjs 17` (or `18`) (it rewrites dev ranges and node_modules; restore with `git checkout -- package-lock.json '*/*/package.json' && npm ci`).
 
 ## Releasing
 
