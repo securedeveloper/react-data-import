@@ -1,6 +1,6 @@
 # react-data-import
 
-> **Status: 1.0 prerelease.** `1.0.0-alpha.0` is on npm under the `next` tag (`npm install react-data-import@next`). The API can still change before 1.0.0. The `latest` tag still points to `0.0.1`, which only reserved the name.
+> **Status: 1.0 prerelease.** `1.0.0-alpha.1` is on npm under the `next` tag (`npm install react-data-import@next`). The API can still change before 1.0.0. The `latest` tag still points to `0.0.1`, which only reserved the name.
 
 Import .xlsx and .csv files into React apps as { columns, data } datasets. Built on javascript-excel.
 
@@ -16,7 +16,7 @@ Watch the repository for 1.0.0.
 ## Status
 
 - **1.0 is designed:** [docs/api.md](docs/api.md) (decided 2026-11-16) covers `importFile`, `useDataImport`, an unstyled `<DataImport>` drop zone and a headless `useColumnMapping`, built on javascript-excel's `javascript-excel/import`.
-- **`importFile`, `previewFile`, `useDataImport`, an unstyled `<DataImport>` drop zone and a headless `useColumnMapping` ship in `1.0.0-alpha.0`** (`npm install react-data-import@next`), built on javascript-excel 2.0.0-alpha.3's `javascript-excel/import`. React 17, 18 and 19.
+- **`importFile`, `previewFile`, `useDataImport`, an unstyled `<DataImport>` drop zone and a headless `useColumnMapping` ship in the 1.0 prereleases** (`npm install react-data-import@next`), built on javascript-excel 2.0.0-alpha.4's `javascript-excel/import`. React 17, 18 and 19.
 
   ```tsx
   import { importFile, useDataImport } from 'react-data-import';
@@ -40,7 +40,7 @@ Watch the repository for 1.0.0.
   </DataImport>
   ```
 - **Playground:** [`apps/playground`](apps/playground) runs the whole flow in the browser: drop a file, preview it, map columns, validate with Zod. It isn't deployed yet; run it with `npm run dev -w playground`.
-- **npm tags:** `next` is `1.0.0-alpha.0`. `latest` stays on the `0.0.1` name placeholder until 1.0.0, so a plain `npm install react-data-import` doesn't give you a prerelease.
+- **npm tags:** `next` is `1.0.0-alpha.1`. `latest` stays on the `0.0.1` name placeholder until 1.0.0, so a plain `npm install react-data-import` doesn't give you a prerelease.
 
 ## Repository layout
 

@@ -1,6 +1,6 @@
 # react-data-import 1.0: API design
 
-Status: **design, decided** (RDI-0). Afzal accepted all fourteen recommendations in [§12](#12-decisions) on 2026-11-16. **`importFile`, `previewFile`, `useDataImport` (RDI-2), `<DataImport>` and `useColumnMapping` (RDI-3) are implemented** on **javascript-excel 2.0.0-alpha.3**, which ships the [§10](#10-what-belongs-in-javascript-excel) additions as `javascript-excel/import`. The design was written against **javascript-excel 2.0.0-alpha.2**: its reader (`read`, `readSheetNames`, `detectFormat`), its CSV reader (`readCsv`) and `toDataset` with `skipTotals`. It names the additions it needs from javascript-excel in [§10](#10-what-belongs-in-javascript-excel).
+Status: **design, decided** (RDI-0). Afzal accepted all fourteen recommendations in [§12](#12-decisions) on 2026-11-16. **`importFile`, `previewFile`, `useDataImport` (RDI-2), `<DataImport>` and `useColumnMapping` (RDI-3) are implemented** on **javascript-excel 2.0.0-alpha.4**, which ships the [§10](#10-what-belongs-in-javascript-excel) additions as `javascript-excel/import`. The design was written against **javascript-excel 2.0.0-alpha.2**: its reader (`read`, `readSheetNames`, `detectFormat`), its CSV reader (`readCsv`) and `toDataset` with `skipTotals`. It names the additions it needs from javascript-excel in [§10](#10-what-belongs-in-javascript-excel).
 
 The library imports an `.xlsx` or `.csv` file chosen by the user and returns a dataset, `{ columns, data }`, the same shape react-data-export writes. So export → import round-trips.
 
