@@ -70,7 +70,7 @@ input ──► 1 detect ──► 2 read ──► 3 pick sheet ──► 4 hea
 7. **Map** the file's columns to the app's schema, if a schema is given ([§6](#6-column-mapping)).
 8. **Validate** each row with the app's function or schema ([§7](#7-validation)), collecting issues per row and field.
 
-Steps 1–7 are framework-free and, under this proposal, live in javascript-excel as one function, `importDataset` ([§10](#10-what-belongs-in-javascript-excel), [Q1](#12-decisions)). `importFile` is that function plus `File` handling, worker routing and validation.
+Steps 1–7 are framework-free and live in javascript-excel as one function, `importDataset` ([§10](#10-what-belongs-in-javascript-excel), [Q1](#12-decisions)). `importFile` is that function plus `File` handling, worker routing and validation.
 
 ## 4. `importFile`
 
