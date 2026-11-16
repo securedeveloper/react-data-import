@@ -71,6 +71,11 @@ jobs:
       - name: Smoke test packed tarball (ESM, CJS, types, "use client")
         run: npm run smoke
 
+      # The playground's own tests (sample import, mapping, Zod validation); React 19 only, like its typecheck.
+      - name: Test playground
+        if: matrix.react == 19
+        run: npm test -w playground
+
       - name: Build playground
         if: matrix.react == 19
         run: npm run build -w playground

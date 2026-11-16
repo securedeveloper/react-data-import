@@ -1,10 +1,21 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["vite/client", "node"],
+    "types": [
+      "vite/client",
+      "node"
+    ],
     "paths": {
-      "react-data-import": ["../../packages/react-data-import/src/index.ts"]
-    }
+      "react-data-import": [
+        "../../packages/react-data-import/src/index.ts"
+      ]
+    },
+    "declaration": false,
+    "isolatedDeclarations": false
   },
-  "include": ["src", "vite.config.ts"]
+  "include": [
+    "src",
+    "test",
+    "vite.config.ts"
+  ]
 }
