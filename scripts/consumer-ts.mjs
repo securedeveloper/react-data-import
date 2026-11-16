@@ -9,7 +9,7 @@
 // `npm run build -w react-data-import` first. Exits 1 if any cell fails.
 //
 // Each cell runs `tsc --noEmit` with strict and skipLibCheck: false over:
-//   - a .tsx component using the package's exports (react-jsx)
+//   - a .tsx component using useDataImport, importFile with a Standard Schema (typed rows) and previewFile (react-jsx)
 //   - a CommonJS .cts consumer (node16/nodenext only; bundler has no CJS mode)
 //   - @ts-expect-error probes that fail if the package's types resolve to `any`
 import { execFileSync } from 'node:child_process';
@@ -52,22 +52,48 @@ if (values.tarball) {
   console.log(`packed ${packed.filename}`);
 }
 
-const tsx = `import type { ReactElement } from 'react';
-import { useVersion, version } from 'react-data-import';
+const tsx = `import { useEffect, type ReactElement } from 'react';
+import { importFile, isExcelError, previewFile, useDataImport, version } from 'react-data-import';
+import type { ColumnMapping, ImportOptions, ImportResult, ImportSchema, StandardSchemaLike } from 'react-data-import';
 
-export function Version(): ReactElement {
-  const v = useVersion();
-  return <output title={version}>{v}</output>;
+const schema: ImportSchema = {
+  fields: { email: { aliases: ['E-mail'], required: true, validate: (v) => (typeof v === 'string' ? undefined : 'text please') }, age: { type: 'number' } },
+};
+
+export function Importer({ file }: { file: File }): ReactElement {
+  const { importFile: run, status, result, applyMapping } = useDataImport({ schema });
+  useEffect(() => {
+    run(file).catch(() => undefined);
+  }, [file, run]);
+  const fix: ColumnMapping = { email: 'Mail' };
+  return <output title={version} onClick={() => void applyMapping(fix)}>{status}{result?.data.length}</output>;
 }
+
+// A Standard Schema as Zod/Valibot/ArkType declare it (structural; the real libraries have their own TS floors).
+const Person: StandardSchemaLike<{ email: string; age: number }> = {
+  '~standard': { version: 1, vendor: 'fixture', validate: (v) => ({ value: v as { email: string; age: number } }) },
+};
+export const typed: Promise<number[]> = importFile(new Blob(['x']), { schema, validate: Person }).then((r) => r.data.map((p) => p.age));
+export const fn: Promise<ImportResult<{ a: string }>> = importFile<{ a: string }>('a', { validate: (row, { rowNumber }) => (row.a ? undefined : \`row \${rowNumber}\`) });
+export const preview = previewFile(new Uint8Array(), { rows: 5, locale: { decimal: ',', group: '.' } });
+export const options: ImportOptions = { maxFileBytes: 1_000_000, header: { rows: 2, join: ' / ' }, types: { amount: 'number' } };
+export const known: boolean = isExcelError(new Error('x'));
+export const std: StandardSchemaLike<{ n: number }> = { '~standard': { version: 1, vendor: 'x', validate: () => ({ value: { n: 1 } }) } };
 
 // These must be errors; if the package's types were missing or \`any\`, tsc reports unused directives.
 // @ts-expect-error version is a string
 export const notNumber: number = version;
-// @ts-expect-error useVersion takes no arguments
-useVersion(1);
+// @ts-expect-error rows from the schema have no 'missing'
+export const wrong: Promise<unknown> = importFile('a', { validate: Person }).then((r) => r.data[0]!.missing);
+// @ts-expect-error unknown format
+importFile('a', { format: 'xls' });
+// @ts-expect-error not a validation mode
+importFile('a', { validation: 'all' });
 `;
-const cts = `import { version } from 'react-data-import';
+const cts = `import { importFile, version } from 'react-data-import';
+import type { ImportResult } from 'react-data-import';
 export const v: string = version;
+export const p: Promise<ImportResult> = importFile('a\\n1');
 // @ts-expect-error version is a string
 export const n: number = version;
 `;

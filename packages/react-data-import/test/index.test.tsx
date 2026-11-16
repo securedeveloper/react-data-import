@@ -5,25 +5,25 @@ import { render, screen } from '@testing-library/react';
 import { StrictMode, version as reactVersion } from 'react';
 import { version as reactDomVersion } from 'react-dom';
 import pkg from '../package.json';
-import { useVersion, version } from '../src/index';
+import { useDataImport, version } from '../src/index';
 
 function Probe() {
-  const v = useVersion();
-  return <output data-testid="version">{v}</output>;
+  const { status } = useDataImport();
+  return <output data-testid="status">{`${version} ${status}`}</output>;
 }
 
-describe('react-data-import scaffold', () => {
+describe('react-data-import entry', () => {
   it('exports the package version', () => {
     expect(version).toBe(pkg.version);
   });
 
-  it('useVersion renders inside a React tree, StrictMode included', () => {
+  it('useDataImport renders inside a React tree, StrictMode included', () => {
     render(
       <StrictMode>
         <Probe />
       </StrictMode>,
     );
-    expect(screen.getByTestId('version').textContent).toBe(pkg.version);
+    expect(screen.getByTestId('status').textContent).toBe(`${pkg.version} idle`);
   });
 
   it('the entry starts with the "use client" directive', () => {

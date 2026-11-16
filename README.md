@@ -1,6 +1,6 @@
 # react-data-import
 
-> **Status: planned.** This package is not usable yet. Version 0.0.1 only reserves the name.
+> **Status: in development.** Version 0.0.1 on npm only reserves the name; the first prerelease will be announced here.
 
 Import .xlsx and .csv files into React apps as { columns, data } datasets. Built on javascript-excel.
 
@@ -16,7 +16,17 @@ Watch the repository for the first real release.
 ## Status
 
 - **1.0 is designed:** [docs/api.md](docs/api.md) (decided 2026-11-16) covers `importFile`, `useDataImport`, an unstyled `<DataImport>` drop zone and a headless `useColumnMapping`, built on javascript-excel's `javascript-excel/import`.
-- **The workspace is scaffolded** (RDI-1): the package builds, tests on React 17, 18 and 19, and is checked as a packed tarball. There is no import feature yet.
+- **`importFile`, `previewFile` and `useDataImport` are on `main`** (RDI-2), not yet on npm, built on javascript-excel 2.0.0-alpha.3's `javascript-excel/import`. `<DataImport>` and `useColumnMapping` come next.
+
+  ```tsx
+  import { importFile, useDataImport } from 'react-data-import';
+
+  const { columns, data, issues } = await importFile(file, {
+    schema: { fields: { email: { aliases: ['E-mail'], required: true }, joined: { type: 'date' } } },
+    validate: Contact, // a function or any Standard Schema (Zod, Valibot, ArkType)
+    maxFileBytes: 10 * 1024 * 1024,
+  });
+  ```
 - **0.0.1 on npm only reserves the name.**
 
 ## Repository layout
