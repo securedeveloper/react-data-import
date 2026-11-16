@@ -32,9 +32,9 @@ if (sets[major] === null) {
 const root = resolve(import.meta.dirname, '..');
 const sh = (args) => execFileSync('npm', args, { cwd: root, stdio: 'inherit' });
 sh(['pkg', 'set', '-w', 'react-data-import', ...Object.entries(sets[major]).map(([k, v]) => `devDependencies.${k}=${v}`)]);
-// Align the playground too, so the tree holds one React.
-const pinned = Object.entries(sets[major]).filter(([k]) => !k.startsWith('@testing-library/'));
-sh(['pkg', 'set', '-w', 'playground', ...pinned.map(([k, v]) => `${k.startsWith('@types/') ? 'devDependencies' : 'dependencies'}.${k}=${v}`)]);
+// Align the playground too, so the tree holds one React and one Testing
+// Library (the playground has its own tests, run in the React 19 cells only).
+sh(['pkg', 'set', '-w', 'playground', ...Object.entries(sets[major]).map(([k, v]) => `${k.startsWith('@types/') || k.startsWith('@testing-library/') ? 'devDependencies' : 'dependencies'}.${k}=${v}`)]);
 for (const dir of ['package-lock.json', 'node_modules', 'packages/react-data-import/node_modules', 'apps/playground/node_modules']) {
   rmSync(join(root, dir), { recursive: true, force: true });
 }
