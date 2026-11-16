@@ -48,9 +48,10 @@ try {
 
   step('ESM import');
   console.log(run('node', ['--input-type=module', '-e', `
-    import { version, importFile, previewFile, useDataImport, isExcelError, DEFAULT_WORKER_THRESHOLD } from 'react-data-import';
+    import { version, importFile, previewFile, useDataImport, DataImport, useColumnMapping, isExcelError, DEFAULT_WORKER_THRESHOLD, DEFAULT_ACCEPT } from 'react-data-import';
     if (version !== ${JSON.stringify(pkg.version)}) throw new Error('bad version ' + version);
-    for (const f of [importFile, previewFile, useDataImport, isExcelError]) if (typeof f !== 'function') throw new Error('missing export');
+    for (const f of [importFile, previewFile, useDataImport, DataImport, useColumnMapping, isExcelError]) if (typeof f !== 'function') throw new Error('missing export');
+    if (!DEFAULT_ACCEPT.includes('.xlsx')) throw new Error('bad accept');
     if (DEFAULT_WORKER_THRESHOLD !== 1048576) throw new Error('bad threshold');
     const r = await importFile('Name;Amount\\nAda;1.234,50\\n', { locale: { decimal: ',', group: '.' } });
     if (r.data.length !== 1 || r.data[0].Amount !== 1234.5) throw new Error('importFile: ' + JSON.stringify(r.data));
@@ -61,9 +62,9 @@ try {
 
   step('CJS require');
   console.log(run('node', ['-e', `
-    const { version, importFile, previewFile, useDataImport } = require('react-data-import');
+    const { version, importFile, previewFile, useDataImport, DataImport, useColumnMapping } = require('react-data-import');
     if (version !== ${JSON.stringify(pkg.version)}) throw new Error('bad version ' + version);
-    for (const f of [importFile, previewFile, useDataImport]) if (typeof f !== 'function') throw new Error('missing export');
+    for (const f of [importFile, previewFile, useDataImport, DataImport, useColumnMapping]) if (typeof f !== 'function') throw new Error('missing export');
     previewFile('a,b\\n1,2\\n3,4', { rows: 1 }).then((p) => {
       if (p.data.length !== 1 || p.meta.truncated !== true) throw new Error('previewFile');
       console.log('cjs ok', version, p.meta.delimiter);

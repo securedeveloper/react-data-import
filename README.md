@@ -16,7 +16,7 @@ Watch the repository for the first real release.
 ## Status
 
 - **1.0 is designed:** [docs/api.md](docs/api.md) (decided 2026-11-16) covers `importFile`, `useDataImport`, an unstyled `<DataImport>` drop zone and a headless `useColumnMapping`, built on javascript-excel's `javascript-excel/import`.
-- **`importFile`, `previewFile` and `useDataImport` are on `main`** (RDI-2), not yet on npm, built on javascript-excel 2.0.0-alpha.3's `javascript-excel/import`. `<DataImport>` and `useColumnMapping` come next.
+- **`importFile`, `previewFile`, `useDataImport`, an unstyled `<DataImport>` drop zone and a headless `useColumnMapping` are on `main`**, not yet on npm, built on javascript-excel 2.0.0-alpha.3's `javascript-excel/import`.
 
   ```tsx
   import { importFile, useDataImport } from 'react-data-import';
@@ -26,6 +26,18 @@ Watch the repository for the first real release.
     validate: Contact, // a function or any Standard Schema (Zod, Valibot, ArkType)
     maxFileBytes: 10 * 1024 * 1024,
   });
+  ```
+
+  ```tsx
+  <DataImport schema={contacts} onImported={(r) => setRows(r.data)}>
+    {({ getRootProps, getInputProps, isDragging, status }) => (
+      <div {...getRootProps({ className: isDragging ? 'drop over' : 'drop' })}>
+        <label>Choose a file <input {...getInputProps()} /></label>
+        <p>or drop an .xlsx or .csv here</p>
+        <p role="status">{status === 'reading' ? 'Reading…' : null}</p>
+      </div>
+    )}
+  </DataImport>
   ```
 - **0.0.1 on npm only reserves the name.**
 

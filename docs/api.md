@@ -1,6 +1,6 @@
 # react-data-import 1.0: API design
 
-Status: **design, decided** (RDI-0). Afzal accepted all fourteen recommendations in [§12](#12-decisions) on 2026-11-16. **`importFile`, `previewFile` and `useDataImport` are implemented** (RDI-2) on **javascript-excel 2.0.0-alpha.3**, which ships the [§10](#10-what-belongs-in-javascript-excel) additions as `javascript-excel/import`; `<DataImport>` and `useColumnMapping` follow. The design was written against **javascript-excel 2.0.0-alpha.2**: its reader (`read`, `readSheetNames`, `detectFormat`), its CSV reader (`readCsv`) and `toDataset` with `skipTotals`. It names the additions it needs from javascript-excel in [§10](#10-what-belongs-in-javascript-excel).
+Status: **design, decided** (RDI-0). Afzal accepted all fourteen recommendations in [§12](#12-decisions) on 2026-11-16. **`importFile`, `previewFile`, `useDataImport` (RDI-2), `<DataImport>` and `useColumnMapping` (RDI-3) are implemented** on **javascript-excel 2.0.0-alpha.3**, which ships the [§10](#10-what-belongs-in-javascript-excel) additions as `javascript-excel/import`. The design was written against **javascript-excel 2.0.0-alpha.2**: its reader (`read`, `readSheetNames`, `detectFormat`), its CSV reader (`readCsv`) and `toDataset` with `skipTotals`. It names the additions it needs from javascript-excel in [§10](#10-what-belongs-in-javascript-excel).
 
 The library imports an `.xlsx` or `.csv` file chosen by the user and returns a dataset, `{ columns, data }`, the same shape react-data-export writes. So export → import round-trips.
 
@@ -357,6 +357,7 @@ export type DataImportProps<Row> = ImportOptions<Row> & {
   disabled?: boolean;
   /** Accessible name of the file input when no label is rendered. Default 'Import a spreadsheet'. */
   inputLabel?: string;
+  /** A render prop, or plain content that labels the default input. */
   children?: ReactNode | ((api: DataImportRenderApi<Row>) => ReactNode);
 };
 
@@ -389,13 +390,21 @@ export interface DataImportRenderApi<Row> {
 </DataImport>
 ```
 
-- **Unstyled and wrapper-free.** Without children it renders one labelled `<input type="file">`. With the render prop it renders only what the app returns. There is no CSS, no class names and no inline styles: the same choice as `<ExcelExport>` (RDE §6).
+- **Unstyled and wrapper-free.** Without children it renders one `<input type="file">` named by `inputLabel`. With the render prop it renders only what the app returns. Plain (non-function) children label the default input: `<label>{children}<input type="file"></label>`, the one element the component adds, because the label is what names the input. There is no CSS, no class names and no inline styles: the same choice as `<ExcelExport>` (RDE §6).
 - **Accessibility.**
   - The file input is always a real `<input type="file">`, so keyboard and screen-reader users get the platform dialog. Dropping is an addition, never the only way.
   - `getRootProps` adds no `role` or `tabIndex`, because a drop zone is not interactive by itself. The input inside it is the control.
   - The default render has an accessible name (`inputLabel`).
-  - Status and errors are left to the app's live region (the example uses `role="status"`), with a recipe in the docs.
-- **Drops:** the first file is imported. When several files are dropped, the others are ignored, with a file-level `FILES_IGNORED` warning ([Q12](#12-decisions)). Dropped directories are ignored.
+  - Status and errors are left to the app's live region. A recipe:
+
+    ```tsx
+    <p role="status">{status === 'reading' ? 'Reading the file…' : status === 'done' ? `${result.data.length} rows imported` : ''}</p>
+    {error ? <p role="alert">{isExcelError(error) ? messages[error.code] ?? error.message : 'The file could not be read.'}</p> : null}
+    ```
+  - The input keeps a stable `id` (React's `useId` on 18+, a per-instance id on 17), so an app `<label htmlFor>` works too.
+- **Drops:** the first file is imported. When several files are dropped, the others are ignored, with a file-level `FILES_IGNORED` warning in `result.issues` and in what `onImported` gets ([Q12](#12-decisions)). Dropped directories are ignored. `data-dragging` is set while files are over the zone; nested elements don't make it flicker.
+- **Choosing the same file again** imports it again: the input's value is cleared after each choice.
+- **Errors** go to `onError`, or to `console.error` without it; aborts are not errors. The import options are read from the props when the import starts.
 - **`accept`** is a convenience for the file dialog, not a check. Detection in [§3](#3-the-pipeline) decides what a file is.
 
 ### 8.3 `useColumnMapping` (headless)
@@ -413,7 +422,12 @@ export interface UseColumnMapping {
 export function useColumnMapping(result: ImportResult<unknown> | null, schema: ImportSchema): UseColumnMapping;
 ```
 
-- State only: the app renders the selects or the drag-and-drop UI. `columns[].sample` holds the first few values, so a UI can show "E-mail: ada@…, grace@…".
+- State only: the app renders the selects or the drag-and-drop UI. `columns[].sample` holds the first few values (three), so a UI can show "E-mail: ada@…, grace@…".
+- **Where the columns come from.**
+  - From a raw result (`previewFile`, or `importFile` without a schema), every column has its title, letter and sample, and the automatic mapping is javascript-excel's `mapColumns`.
+  - From a mapped result (`useDataImport`'s `'mapping'` state), the result's own mapping is the starting point. Mapped columns keep their samples, but the unmapped ones are known only by key (`meta.unmappedColumns`): no letter, no sample.
+  - So a mapping screen that shows every column's values should start from `previewFile`, then call `importFile(file, { schema, mapping })`.
+- `set(field, column)` throws a `TypeError` for an unknown field or column. A new `result` starts again from its own automatic mapping.
 - Pair it with `useDataImport().applyMapping(mapping)`. A **styled** mapping UI is not in 1.0 ([Q6](#12-decisions)). The playground (RDI-9) shows one built on this hook.
 
 ## 9. Big files: limits, preview, worker, abort

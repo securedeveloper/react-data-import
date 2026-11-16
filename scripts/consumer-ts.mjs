@@ -53,8 +53,8 @@ if (values.tarball) {
 }
 
 const tsx = `import { useEffect, type ReactElement } from 'react';
-import { importFile, isExcelError, previewFile, useDataImport, version } from 'react-data-import';
-import type { ColumnMapping, ImportOptions, ImportResult, ImportSchema, StandardSchemaLike } from 'react-data-import';
+import { DataImport, importFile, isExcelError, previewFile, useColumnMapping, useDataImport, version } from 'react-data-import';
+import type { ColumnMapping, DataImportRenderApi, ImportOptions, ImportResult, ImportSchema, StandardSchemaLike } from 'react-data-import';
 
 const schema: ImportSchema = {
   fields: { email: { aliases: ['E-mail'], required: true, validate: (v) => (typeof v === 'string' ? undefined : 'text please') }, age: { type: 'number' } },
@@ -70,6 +70,40 @@ export function Importer({ file }: { file: File }): ReactElement {
 }
 
 // A Standard Schema as Zod/Valibot/ArkType declare it (structural; the real libraries have their own TS floors).
+export function DropZone({ onRows }: { onRows: (n: number) => void }): ReactElement {
+  return (
+    <DataImport schema={schema} maxFileBytes={1_000_000} onImported={(r) => onRows(r.data.length)} onError={(e) => console.log(e)}>
+      {({ getRootProps, getInputProps, isDragging, status, open }: DataImportRenderApi<Record<string, unknown>>) => (
+        <div {...getRootProps({ className: isDragging ? 'over' : '' })}>
+          <label>
+            File <input {...getInputProps({ 'aria-describedby': 'hint' })} />
+          </label>
+          <button type="button" onClick={open}>Browse</button>
+          <p role="status">{status}</p>
+        </div>
+      )}
+    </DataImport>
+  );
+}
+
+export function Mapper({ preview }: { preview: ImportResult | null }): ReactElement {
+  const m = useColumnMapping(preview, schema);
+  return (
+    <ul>
+      {m.fields.map((f) => (
+        <li key={f.name}>
+          <select value={f.column ?? ''} onChange={(e) => m.set(f.name, e.target.value || null)}>
+            {m.columns.map((c) => <option key={c.key} value={c.key}>{c.title} {String(c.sample[0])}</option>)}
+          </select>
+        </li>
+      ))}
+      <li>{m.missingRequired.join(', ')}</li>
+    </ul>
+  );
+}
+
+export const simple: ReactElement = <DataImport inputLabel="Upload">Choose a file</DataImport>;
+
 const Person: StandardSchemaLike<{ email: string; age: number }> = {
   '~standard': { version: 1, vendor: 'fixture', validate: (v) => ({ value: v as { email: string; age: number } }) },
 };
@@ -89,6 +123,8 @@ export const wrong: Promise<unknown> = importFile('a', { validate: Person }).the
 importFile('a', { format: 'xls' });
 // @ts-expect-error not a validation mode
 importFile('a', { validation: 'all' });
+// @ts-expect-error onImported gets an ImportResult
+export const badHandler: ReactElement = <DataImport onImported={(r: string) => r} />;
 `;
 const cts = `import { importFile, version } from 'react-data-import';
 import type { ImportResult } from 'react-data-import';
