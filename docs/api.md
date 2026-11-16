@@ -1,6 +1,6 @@
 # react-data-import 1.0: API design
 
-Status: **design, decided** (RDI-0). Afzal accepted all fourteen recommendations in [§12](#12-decisions) on 2026-11-16. The design builds on **javascript-excel 2.0.0-alpha.2**: its reader (`read`, `readSheetNames`, `detectFormat`), its CSV reader (`readCsv`) and `toDataset` with `skipTotals`. It names the additions it needs from javascript-excel in [§10](#10-what-belongs-in-javascript-excel).
+Status: **design, decided** (RDI-0). Afzal accepted all fourteen recommendations in [§12](#12-decisions) on 2026-11-16. **`importFile`, `previewFile` and `useDataImport` are implemented** (RDI-2) on **javascript-excel 2.0.0-alpha.3**, which ships the [§10](#10-what-belongs-in-javascript-excel) additions as `javascript-excel/import`; `<DataImport>` and `useColumnMapping` follow. The design was written against **javascript-excel 2.0.0-alpha.2**: its reader (`read`, `readSheetNames`, `detectFormat`), its CSV reader (`readCsv`) and `toDataset` with `skipTotals`. It names the additions it needs from javascript-excel in [§10](#10-what-belongs-in-javascript-excel).
 
 The library imports an `.xlsx` or `.csv` file chosen by the user and returns a dataset, `{ columns, data }`, the same shape react-data-export writes. So export → import round-trips.
 
@@ -174,7 +174,7 @@ export interface ImportIssue {
   row: number;                // spreadsheet row number (1-based); 0 for file-level issues
   field?: string;             // field or column key
   ref?: string;               // 'C17'
-  code: string;               // 'REQUIRED', 'TYPE', 'ERROR_CELL', 'MAPPING_MISSING', or the validator's own code
+  code: string;               // 'REQUIRED', 'TYPE', 'ERROR_CELL', 'MAPPING_MISSING', 'INVALID' (a validator's issue without a code), or the validator's own code
   message: string;
   severity: 'error' | 'warning';
 }
@@ -187,7 +187,7 @@ export interface ImportIssue {
 ### 4.3 Behaviour
 
 - **Input.** A `File` gives `meta.fileName` and its MIME type for detection. A `Blob` or bytes are detected from content only. A string is CSV text. `importFile` reads a `File` with `arrayBuffer()` after checking `size` against `maxFileBytes`, so an oversized file is rejected before any bytes are loaded.
-- **Progress.** `ImportProgress` is `{ phase: 'read' | 'unzip' | 'parse' | 'dataset' | 'validate', ratio }`, non-decreasing. The `read`/`unzip`/`parse` phases come from javascript-excel. `dataset` and `validate` are counted in rows.
+- **Progress.** `ImportProgress` is `{ phase: 'unzip' | 'parse' | 'dataset' | 'validate', ratio }`, non-decreasing and ending at 1. The `unzip`, `parse` and `dataset` phases come from javascript-excel. `validate` is counted in rows and takes the last 10% when there is validation. There is no `read` phase: reading a `File` into memory gives no progress events.
 - **Empty input.** A sheet or file with no cells resolves with no columns and no data, not an error. `importFile` reports it as a file-level issue (`EMPTY`, severity `warning`), so a UI can show "the file is empty" without a `try`.
 - **Several sheets.** One call imports one sheet. `meta.sheets` lists all of them, so a UI can offer a picker and call again with `sheet`. A whole-workbook import is a later addition ([Q12](#12-decisions)).
 
@@ -315,8 +315,8 @@ export interface StandardSchemaLike<Output> {
 - **Two ways to validate, no dependency.**
   - A function: return nothing, a message, or issues.
   - A **Standard Schema** object. Zod 3.24+, Valibot 1.0+ and ArkType 2.0+ implement that interface `[to verify]`, so `validate: z.object({ … })` works without adapters, and the result rows are the schema's output. Its issue paths map to `field` ([Q7](#12-decisions)).
-- **Order:** field-level `FieldSpec.validate` and type issues come first, then the row validator.
-- **Invalid rows.** Rows with an `error` issue are **excluded** from `data` and listed in `issues` with their row number. `warning` issues keep the row. `validation: 'stop'` rejects at the first error with `VALIDATION_FAILED`.
+- **Order:** field-level `FieldSpec.validate` and type issues come first, then the row validator. Issues without a `code` get `'INVALID'`; issues without a `severity` are errors. With a Standard Schema, an issue's `path` gives its `field` (its first segment).
+- **Invalid rows.** Rows with an `error` issue are **excluded** from `data` and listed in `issues` with their row number. That includes javascript-excel's own row errors (`TYPE`, `REQUIRED`). `warning` issues keep the row. `validation: 'stop'` rejects at the first error with `VALIDATION_FAILED`, with that row's issues in `details.issues`.
 - **Async validators** are allowed (for example a uniqueness check against a server). They run one row at a time, in order, and check `signal` between rows. The docs will recommend batching remote checks after import rather than per row.
 - Validation runs on the main thread, because functions can't cross into a worker ([§9.3](#93-worker)).
 
@@ -343,7 +343,7 @@ export function useDataImport<Row = Record<string, unknown>>(defaults?: ImportOp
 ```
 
 - The same contract as react-data-export's `useExcelExport` (RDE §5): stable function identities, an `AbortController` per call linked to `options.signal`, abort on unmount, StrictMode-safe "mounted" tracking, and aborts that are neither errors nor `status: 'error'`.
-- **`'mapping'`** is the only new state. It's entered when a schema is given and the automatic mapping leaves a required field unmapped. `result` then holds the unmapped dataset and `MAPPING_MISSING` issues. `applyMapping` re-runs steps 7–8 on the dataset already read; the file is not read again.
+- **`'mapping'`** is the only new state. It's entered when a schema is given and the automatic mapping leaves a required field unmapped. `result` then holds the rows mapped so far and the `MAPPING_MISSING` issues. `applyMapping` imports again with the new mapping from the bytes the hook kept in memory, so the file is not read again. Steps 2–8 do run again: forced field types must convert from the file's own values, not from values already converted, so the import isn't split at step 7. The kept bytes are released by `reset()` or the next import.
 - A new `importFile` call aborts the one in flight. An import replaces the previous result: one file at a time, which is what a form field means.
 
 ### 8.2 `<DataImport>` (unstyled)
@@ -420,14 +420,14 @@ export function useColumnMapping(result: ImportResult<unknown> | null, schema: I
 
 ### 9.1 Limits
 
-- **`maxFileBytes`** is checked against `File.size` before any byte is read. Its default is javascript-excel's `maxInputBytes`, 256 MiB, which is measured (JSE §5.2) but is a server-sized ceiling. The docs will tell apps to set a limit that fits their use; no browser-specific default is invented here ([Q10](#12-decisions)).
+- **`maxFileBytes`** is checked against `File.size` (`byteLength` for bytes, the length in characters for CSV text) before any byte is read, and rejects with `LIMIT_EXCEEDED`, `details.limit: 'maxFileBytes'`. Its default is javascript-excel's `maxInputBytes`, 256 MiB, which is measured (JSE §5.2) but is a server-sized ceiling. The docs will tell apps to set a limit that fits their use; no browser-specific default is invented here ([Q10](#12-decisions)).
 - **`maxRows`** caps data rows: CSV through `readCsv`'s `maxRows`, xlsx through the reader's `maxCells` and a row check. Exceeding it rejects with `LIMIT_EXCEEDED` (`details.limit: 'maxRows'`), except in preview, where it truncates.
 - **`limits`** passes javascript-excel's read limits through unchanged, and they stay on by default (zip bombs, cells, shared strings, XML depth; JSE §8).
 
 ### 9.2 Preview
 
 ```ts
-export function previewFile(input: File | Blob | ArrayBuffer | Uint8Array | string, options?: ImportOptions<unknown> & { rows?: number }): Promise<ImportResult<Record<string, unknown>>>;
+export function previewFile(input: File | Blob | ArrayBuffer | Uint8Array | string, options?: Omit<ImportOptions, 'validate' | 'validation' | 'mapping'> & { rows?: number }): Promise<ImportResult<Record<string, unknown>>>;
 ```
 
 Runs steps 1–6 on the first `rows` data rows (default 20) and returns `meta` with the detected header, delimiter, encoding and column types. It doesn't map or validate. A UI can show a preview, a sheet picker, a header-row picker and the mapping step before the full import.
@@ -438,7 +438,7 @@ Runs steps 1–6 on the first `rows` data rows (default 20) and returns `meta` w
 ### 9.3 Worker
 
 - `worker: WorkerClient` (from `javascript-excel/worker`, created by the app from its own two-line worker file, JSE §5.5) runs steps 1–7 in the worker, through a new worker operation for `importDataset` ([§10](#10-what-belongs-in-javascript-excel)). The worker sends back the dataset: plain rows, cloned once.
-- **Validation runs on the main thread**, because validators are functions. So does any `types` or `schema` entry that holds a function (`FieldSpec.validate`).
+- **Validation runs on the main thread**, because validators are functions. So does any `types` or `schema` entry that holds a function (`FieldSpec.validate`): the schema sent to the worker keeps names, aliases, `required` and `type` only. The threshold default is exported as `DEFAULT_WORKER_THRESHOLD`.
 - `useDataImport` and `<DataImport>` accept `worker` plus `workerThreshold` (bytes): files at or above it go to the worker, smaller ones stay on the main thread, where the round trip costs more than it saves. The javascript-excel playground uses 1 MiB. The default is a question, not a measurement yet ([Q9](#12-decisions)).
 - Without `worker`, everything runs on the main thread. javascript-excel's reader and `readCsv` are chunked where they can be (`readCsv` yields between chunks), but a large xlsx blocks the thread while it parses.
 

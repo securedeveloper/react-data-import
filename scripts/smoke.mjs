@@ -48,22 +48,30 @@ try {
 
   step('ESM import');
   console.log(run('node', ['--input-type=module', '-e', `
-    import { version, useVersion } from 'react-data-import';
+    import { version, importFile, previewFile, useDataImport, isExcelError, DEFAULT_WORKER_THRESHOLD } from 'react-data-import';
     if (version !== ${JSON.stringify(pkg.version)}) throw new Error('bad version ' + version);
-    if (typeof useVersion !== 'function') throw new Error('missing export');
-    console.log('esm ok', version);
+    for (const f of [importFile, previewFile, useDataImport, isExcelError]) if (typeof f !== 'function') throw new Error('missing export');
+    if (DEFAULT_WORKER_THRESHOLD !== 1048576) throw new Error('bad threshold');
+    const r = await importFile('Name;Amount\\nAda;1.234,50\\n', { locale: { decimal: ',', group: '.' } });
+    if (r.data.length !== 1 || r.data[0].Amount !== 1234.5) throw new Error('importFile: ' + JSON.stringify(r.data));
+    const err = await importFile(new Uint8Array([1, 2, 3])).catch((e) => e);
+    if (!isExcelError(err) || err.code !== 'UNSUPPORTED_FORMAT') throw new Error('expected UNSUPPORTED_FORMAT');
+    console.log('esm ok', version, JSON.stringify(r.data[0]));
   `], app).trim());
 
   step('CJS require');
   console.log(run('node', ['-e', `
-    const { version, useVersion } = require('react-data-import');
+    const { version, importFile, previewFile, useDataImport } = require('react-data-import');
     if (version !== ${JSON.stringify(pkg.version)}) throw new Error('bad version ' + version);
-    if (typeof useVersion !== 'function') throw new Error('missing export');
-    console.log('cjs ok', version);
+    for (const f of [importFile, previewFile, useDataImport]) if (typeof f !== 'function') throw new Error('missing export');
+    previewFile('a,b\\n1,2\\n3,4', { rows: 1 }).then((p) => {
+      if (p.data.length !== 1 || p.meta.truncated !== true) throw new Error('previewFile');
+      console.log('cjs ok', version, p.meta.delimiter);
+    }).catch((e) => { console.error(e); process.exit(1); });
   `], app).trim());
 
   step('types (node16 ESM + CJS, bundler)');
-  const src = `import { version, useVersion } from 'react-data-import';\nconst v: string = version;\nconst h: () => string = useVersion;\nexport { v, h };\n`;
+  const src = `import { version, importFile, type ImportResult } from 'react-data-import';\nconst v: string = version;\nconst p: Promise<ImportResult> = importFile('a\\n1');\nexport { v, p };\n`;
   writeFileSync(join(app, 'esm.mts'), src);
   writeFileSync(join(app, 'cjs.cts'), src);
   writeFileSync(join(app, 'bundler.ts'), src);
