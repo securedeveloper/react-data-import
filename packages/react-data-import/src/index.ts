@@ -21,6 +21,10 @@ export type {
 } from './import';
 export { useDataImport } from './use-data-import';
 export type { ImportStatus, UseDataImport } from './use-data-import';
+export { DataImport, DEFAULT_ACCEPT } from './data-import';
+export type { DataImportProps, DataImportRenderApi } from './data-import';
+export { useColumnMapping } from './use-column-mapping';
+export type { MappingColumn, MappingField, UseColumnMapping } from './use-column-mapping';
 
 export type { ColumnMapping, ColumnType, ImportedColumn, ImportLocale, ImportMeta } from 'javascript-excel/import';
 export type { ExcelWarning } from 'javascript-excel';
