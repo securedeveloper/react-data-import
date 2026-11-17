@@ -1,6 +1,6 @@
 # react-data-import
 
-> **Status: 1.0 beta.** `1.0.0-beta.0` is on npm under the `next` tag (`npm install react-data-import@next`). It is feature-complete for 1.0, and only fixes come before 1.0.0. The `latest` tag still points to `0.0.1`, which only reserved the name.
+> **Status: 1.0 beta.** `1.0.0-beta.1` is on npm under the `next` tag (`npm install react-data-import@next`). It is feature-complete for 1.0, and only fixes come before 1.0.0. The `latest` tag still points to `0.0.1`, which only reserved the name.
 
 Import .xlsx and .csv files into React apps as { columns, data } datasets. Built on javascript-excel.
 
@@ -19,7 +19,7 @@ Watch the repository for 1.0.0.
 - **`importFile`, `previewFile`, `useDataImport`, an unstyled `<DataImport>` drop zone and a headless `useColumnMapping` ship in the 1.0 beta** (`npm install react-data-import@next`), built on javascript-excel's `javascript-excel/import`. React 17, 18 and 19.
 - **The usage guide** is the [package README](packages/react-data-import/README.md): the quick start, `importFile` and its options, the hooks, the issue model and its codes, validation recipes for Zod, Valibot, ArkType and plain functions, and workers. Its code lives in [`examples/`](examples), which CI type-checks and runs.
 - **Playground:** try the whole flow (drop a file, preview it, map columns, validate with Zod) at https://react-data-import-playground.vercel.app/ ([`securedeveloper/react-data-import-playground`](https://github.com/securedeveloper/react-data-import-playground), which uses the published package). [`apps/playground`](apps/playground) is the in-repo dev sandbox of the same flow, tested in CI and not deployed; run it with `npm run dev -w playground`.
-- **npm tags:** `next` is `1.0.0-beta.0`. `latest` stays on the `0.0.1` name placeholder until 1.0.0, so a plain `npm install react-data-import` doesn't give you a prerelease.
+- **npm tags:** `next` is `1.0.0-beta.1`. `latest` stays on the `0.0.1` name placeholder until 1.0.0, so a plain `npm install react-data-import` doesn't give you a prerelease.
 
 ## A quick look
 
