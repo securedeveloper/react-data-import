@@ -1,0 +1,11 @@
+{
+  // Type-checks the README examples, and the test that runs them, against the library source (npm run docs:check).
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "paths": { "react-data-import": ["../packages/react-data-import/src/index.ts"] },
+    "types": ["vitest/globals"],
+    "declaration": false,
+    "isolatedDeclarations": false
+  },
+  "include": ["*.ts", "*.tsx", "../packages/react-data-import/test/examples.test.tsx"]
+}

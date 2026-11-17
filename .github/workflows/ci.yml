@@ -55,6 +55,12 @@ jobs:
         if: matrix.react != 19
         run: npm run typecheck -w react-data-import
 
+      # The code in the READMEs is examples/: the blocks must match the files,
+      # and the files type-check (they also run, in test/examples.test.tsx).
+      - name: Docs (README code matches examples/, examples type-check)
+        if: matrix.react == 19
+        run: npm run docs:check
+
       - name: Test
         run: npm test
 

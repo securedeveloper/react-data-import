@@ -13,6 +13,7 @@
   "scripts": {
     "build": "npm run build -w react-data-import && npm run build -w playground",
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "docs:check": "node scripts/check-doc-snippets.mjs && tsc -p examples",
     "test": "npm test -w react-data-import",
     "lint:pkg": "npm run lint:pkg -w react-data-import",
     "smoke": "node scripts/smoke.mjs",
