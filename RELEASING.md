@@ -29,24 +29,56 @@ git diff                     # review the version bump and CHANGELOG.md
 `npm run version-packages` runs `changeset version`, which:
 - consumes the pending changesets,
 - bumps `packages/react-data-import/package.json`,
-- writes `packages/react-data-import/CHANGELOG.md`.
+- writes `packages/react-data-import/CHANGELOG.md`,
+- updates the playground's exact dependency on the package.
 
-It then runs `scripts/sync-version.mjs`, which sets the `version` constant in `packages/react-data-import/src/index.ts` to the new version (`changeset version` never edits source files). It fails if it can't find exactly one such constant, so renaming the constant can't silently break the sync. Last, `npm install --package-lock-only` puts the new version into `package-lock.json` too.
+It then runs `scripts/reset-pre-counter.mjs`, which restarts the prerelease number at 0 when the prerelease tag changed (see [§3](#3-prereleases-pre-mode)), and `scripts/sync-version.mjs`, which sets the `version` constant in `packages/react-data-import/src/index.ts` to the new version (`changeset version` never edits source files). It fails if it can't find exactly one such constant, so renaming the constant can't silently break the sync. Last, `npm install --package-lock-only` puts the new version into `package-lock.json` too.
 
 Open the pull request. Its **Release dry run** CI job shows what merging would do. The "Release preview" step says which version would be published, or "no release". The job also runs `npm publish --dry-run` with the dist-tag that would be used.
 
 ## 3. Prereleases (pre mode)
 
-Early versions can go out as prereleases on the `next` dist-tag, so `npm install react-data-import` keeps getting the current `latest` until a final version is ready.
+1.0 ships as prereleases on the `next` dist-tag, so `npm install react-data-import` keeps getting `latest` (the `0.0.1` name placeholder) until 1.0.0 is final.
+
+Pre mode is Changesets 3's own format. `.changeset/pre.json` holds just `{ "mode": "pre", "tag": "<tag>" }`. `changeset version` moves the changesets it consumed into `.changeset/pre/`, where later prereleases skip them and the final release picks them all up again. Don't edit or delete the files in `.changeset/pre/` by hand.
+
+Any version with a prerelease part (`-alpha.1`, `-beta.0`, ...) is published with `--tag next` and marked as a prerelease on GitHub. A plain version (`1.0.0`) goes to `latest`.
+
+### Entering pre mode
 
 ```sh
-npx changeset pre enter alpha     # or beta / rc; commit .changeset/pre.json
-npm run version-packages          # e.g. 0.1.0-alpha.0, 0.1.0-alpha.1, ...
-npx changeset pre exit            # when the final version is next
-npm run version-packages          # e.g. 0.1.0
+npx changeset pre enter alpha     # writes .changeset/pre.json; commit it
+npm run version-packages          # 1.0.0-alpha.0, then alpha.1, alpha.2, ...
 ```
 
-Any version with a prerelease part (`-alpha.1`, `-beta.0`, ...) is published with `--tag next` and marked as a prerelease on GitHub. A plain version (`0.1.0`) goes to `latest`.
+### Switching the tag (alpha → beta → rc)
+
+`changeset pre enter` refuses to run while in pre mode, so a tag switch is a one-line edit:
+
+1. On a branch, change `"tag"` in `.changeset/pre.json` (for example `"alpha"` → `"beta"`). Change nothing else, and don't bump the version. Open a pull request with that change. Merging it publishes nothing, because the version doesn't change.
+2. Cut the next release pull request as usual (§2), with at least one pending changeset.
+
+Changesets numbers the next prerelease from the current version (`prerelease[1] + 1`) and keeps counting across a tag switch: on its own, `changeset version` turns `1.0.0-alpha.2` into `1.0.0-beta.3`. `npm run version-packages` therefore runs `scripts/reset-pre-counter.mjs` right after it. The script compares the package version with the one committed at `HEAD`. When the prerelease tag differs, it rewrites the new version to `-<tag>.0` in every changed `package.json` (the package itself and the playground's exact pin) and in the `CHANGELOG.md` heading. The `version` sync and the lockfile update then use that version. So the release after `1.0.0-alpha.2` is `1.0.0-beta.0`, and the ones after it are `beta.1`, `beta.2`, .... A release with the same tag, a first prerelease and a final version are left alone. The script is shared unchanged with javascript-excel and the other family repositories: change it in all of them or not at all.
+
+Checked with a dry run: on top of the switch to `"beta"`, with the pending changeset, `npm run version-packages` gives `1.0.0-beta.0` in `packages/react-data-import/package.json`, `CHANGELOG.md` (`## 1.0.0-beta.0`), the `version` constant, `apps/playground/package.json` and `package-lock.json`. With one more changeset, the next run gives `1.0.0-beta.1`.
+
+### Exiting pre mode (the final 1.0.0)
+
+```sh
+git switch -c release-1.0.0 origin/main
+npx changeset pre exit            # sets "mode": "exit" in .changeset/pre.json
+npm run version-packages          # 1.0.0
+```
+
+With `"mode": "exit"`, `changeset version`:
+
+- versions the package to the plain `1.0.0` (the reset script leaves final versions alone),
+- writes one `## 1.0.0` CHANGELOG section with **every** changeset since pre mode was entered: those in `.changeset/pre/` and the new ones,
+- deletes `.changeset/pre.json` and all of `.changeset/pre/`.
+
+Dry run (from `1.0.0-beta.0`): `1.0.0` in the package, the playground pin, the `version` constant and the lockfile; `pre.json` and the six files in `.changeset/pre/` deleted; and every changeset since pre mode was entered in one `## 1.0.0` section.
+
+Before merging the stable release pull request, add a short hand-written summary at the top of the `## 1.0.0` section. The release notes are that section. Merging that pull request publishes `1.0.0` to `latest`. The prerelease versions stay on npm under `next`.
 
 ## 4. What happens on merge
 
