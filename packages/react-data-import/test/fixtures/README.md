@@ -19,7 +19,8 @@ UPDATE_FIXTURES=1 npx vitest run test/fixtures.test.ts   # in packages/react-dat
 | `csv/crlf.csv`, `csv/lf.csv`, `csv/cr.csv` | the same rows for each line ending |
 | `csv/trailing-empty-columns.csv` | `a,b,,,`: empty columns keyed by letter, type `empty` |
 | `csv/title-row.csv` | title rows and a blank row above the header |
-| `csv/two-header-rows.csv` | a two-row header: **not** detected in CSV (no merges); `header: { rows: 2 }` reads it |
+| `csv/two-header-rows.csv` | a two-row header without merges: detected (`[0, 1]`, high) and flattened to `Sales / Q1` (javascript-excel 2.0.0-beta.1) |
+| `csv/header-groups.csv` | react-data-export's header groups written to CSV: a group title over empty cells carries right (`Q1 / Jan`, `Q1 / Feb`, `Q1 / Mar`) |
 | `csv/blank-rows-before-header.csv`, `csv/blank-delimited-rows-before-header.csv` | empty lines, and lines of only delimiters, above the header |
 | `csv/wide-500-columns.csv` | 500 columns (up to `SF`) |
 | *(in the test)* `longCsv(100_000)` | 100,000 rows: types, preview, `maxRows`. About 3 MB, so it is generated in the test and not committed |

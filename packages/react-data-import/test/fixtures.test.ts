@@ -138,14 +138,22 @@ describe('header detection', () => {
     expect(commas.data[0]).toEqual(row({ Name: 'Ada', Amount: 1, City: 'Oslo' }));
   });
 
-  it('CSV: two header rows are NOT detected (CSV has no merges); header: { rows: 2 } reads them', async () => {
-    // What 'auto' does today: the first row is the header, and the second becomes data, with high confidence.
+  it('CSV: a two-row header without merges is detected and flattened (javascript-excel 2.0.0-beta.1)', async () => {
+    const want = [row({ Region: 'North', 'Sales / Q1': 10, 'Sales / Q2': 20 }), row({ Region: 'South', 'Sales / Q1': 30, 'Sales / Q2': 40 })];
     const auto = await csv('two-header-rows.csv');
-    expect(auto.meta.header).toEqual({ rows: [0], detected: true, confidence: 'high' });
-    expect(auto.data[0]).toEqual(row({ Region: null, Sales: 'Q1', Sales_2: 'Q2' }));
-    const two = await csv('two-header-rows.csv', { header: { rows: 2 } });
-    expect(two.columns.map((c) => c.key)).toEqual(['Region', 'Sales / Q1', 'Sales / Q2']);
-    expect(two.data).toEqual([row({ Region: 'North', 'Sales / Q1': 10, 'Sales / Q2': 20 }), row({ Region: 'South', 'Sales / Q1': 30, 'Sales / Q2': 40 })]);
+    expect(auto.meta.header).toEqual({ rows: [0, 1], detected: true, confidence: 'high' });
+    expect(auto.columns.map((c) => c.key)).toEqual(['Region', 'Sales / Q1', 'Sales / Q2']);
+    expect(auto.data).toEqual(want);
+    expect(auto.rowNumbers).toEqual([3, 4]);
+    // Giving the rows explicitly reads the same.
+    expect((await csv('two-header-rows.csv', { header: { rows: 2 } })).data).toEqual(want);
+  });
+
+  it('CSV: header groups (a group title over empty cells) carry right over their sub-columns', async () => {
+    const r = await csv('header-groups.csv');
+    expect(r.meta.header).toEqual({ rows: [0, 1], detected: true, confidence: 'high' });
+    expect(r.columns.map((c) => c.key)).toEqual(['Region', 'Q1 / Jan', 'Q1 / Feb', 'Q1 / Mar', 'Q2 / Apr', 'Q2 / May']);
+    expect(r.data[0]).toEqual(row({ Region: 'North', 'Q1 / Jan': 10, 'Q1 / Feb': 20, 'Q1 / Mar': 30, 'Q2 / Apr': 40, 'Q2 / May': 50 }));
   });
 
   it.each(['title-row-merged.xlsx', 'title-rows-unmerged.xlsx'])('xlsx %s: title rows skipped', async (name) => {
