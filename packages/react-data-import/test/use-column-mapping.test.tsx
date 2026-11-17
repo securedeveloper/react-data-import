@@ -70,3 +70,19 @@ describe('useColumnMapping', () => {
     expect(api.current!.mapping).toEqual({ email: null, name: null, phone: 'Phone' });
   });
 });
+
+describe('useColumnMapping samples (RDI-12)', () => {
+  it("in the 'mapping' state, samples come from the file even when a validator rejects every row", async () => {
+    const s: ImportSchema = { fields: { email: { aliases: ['E-mail'], required: true }, name: { aliases: ['Full name'] }, phone: { required: true } } };
+    const result = await importFile(csv, { schema: s, validate: () => 'rejected' });
+    expect(result.data).toEqual([]);
+    const api: { current: UseColumnMapping | null } = { current: null };
+    // A copy, as <DataImport> makes when it adds FILES_IGNORED, keeps the samples.
+    render(<Probe result={{ ...result, issues: [...result.issues] }} s={s} api={api} />);
+    expect(api.current!.columns.map((c) => [c.key, c.sample])).toEqual([
+      ['E-mail', ['ada@x.org', 'grace@x.org']],
+      ['Full name', ['Ada', 'Grace']],
+      ['Telefon', []],
+    ]);
+  });
+});

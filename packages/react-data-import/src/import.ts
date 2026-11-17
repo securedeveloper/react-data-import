@@ -15,6 +15,7 @@ import {
 } from 'javascript-excel/import';
 import type { ReadLimits } from 'javascript-excel/read';
 import type { WorkerClient } from 'javascript-excel/worker';
+import { keepSamples } from './samples';
 
 export type ImportInput = File | Blob | ArrayBuffer | Uint8Array | string;
 
@@ -34,7 +35,10 @@ export interface ImportSchema {
 export interface ImportIssue {
   /** Spreadsheet row (1-based, as Excel shows it); 0 for column- or file-level issues. */
   row: number;
+  /** The key the value has in `data` rows: the schema field with a schema, the column key without one. */
   field?: string | undefined;
+  /** The source column key, for cell- and column-level issues. */
+  column?: string | undefined;
   ref?: string | undefined;
   code: string;
   message: string;
@@ -43,6 +47,10 @@ export interface ImportIssue {
 
 export interface ImportIssueInput {
   field?: string | undefined;
+  /** Default: the column mapped to `field`. */
+  column?: string | undefined;
+  /** Default: the cell of `field` in this row. */
+  ref?: string | undefined;
   message: string;
   code?: string | undefined;
   severity?: 'error' | 'warning' | undefined;
@@ -168,7 +176,15 @@ function toIssues(check: RowCheck, rowNumber: number): ImportIssue[] {
   const list = Array.isArray(check) ? check : [check];
   return list.map((c) => {
     const i: ImportIssueInput = typeof c === 'string' ? { message: c } : c;
-    return { row: rowNumber, ...(i.field !== undefined ? { field: i.field } : {}), code: i.code ?? 'INVALID', message: i.message, severity: i.severity ?? 'error' };
+    return {
+      row: rowNumber,
+      ...(i.field !== undefined ? { field: i.field } : {}),
+      ...(i.column !== undefined ? { column: i.column } : {}),
+      ...(i.ref !== undefined ? { ref: i.ref } : {}),
+      code: i.code ?? 'INVALID',
+      message: i.message,
+      severity: i.severity ?? 'error',
+    };
   });
 }
 
@@ -179,7 +195,31 @@ function pathField(path: ReadonlyArray<PropertyKey | { readonly key: PropertyKey
   return typeof key === 'symbol' ? key.description : String(key);
 }
 
-/** Step 8: field checks, then the row validator; rows with an error issue are left out. */
+/** Each field's source column key and letter, for validator issues. */
+function columnsOf(base: ImportDatasetResult): Map<string, { column: string; letter: string }> {
+  const out = new Map<string, { column: string; letter: string }>();
+  const { mapping, unmappedColumns } = base.meta;
+  for (const c of base.columns) {
+    // A schema field: its mapped column. A kept column: its own key, unless it was suffixed. No schema: the column itself.
+    const column = c.field !== undefined ? mapping?.[c.field] : mapping === undefined || unmappedColumns?.includes(c.key) ? c.key : undefined;
+    if (typeof column === 'string') out.set(c.key, { column, letter: c.letter });
+  }
+  return out;
+}
+
+/** Adds `column` and `ref` to a validator issue on a field with a column, unless the validator set them. */
+function locate(issue: ImportIssue, columns: Map<string, { column: string; letter: string }>): ImportIssue {
+  const at = issue.field !== undefined ? columns.get(issue.field) : undefined;
+  if (!at || (issue.column !== undefined && issue.ref !== undefined)) return issue;
+  const { row, field, column, ref, ...rest } = issue;
+  return { row, field, column: column ?? at.column, ...(ref !== undefined ? { ref } : at.letter ? { ref: `${at.letter}${row}` } : {}), ...rest };
+}
+
+/**
+ * Step 8: field checks, then the row validator; rows with an error issue are left out.
+ * A field with an engine error in the row (TYPE, REQUIRED), or without a column
+ * (MAPPING_MISSING), is not checked again: the engine's issue is the one reported.
+ */
 async function validateRows<Row>(
   base: ImportDatasetResult,
   options: ImportOptions<Row>,
@@ -187,21 +227,34 @@ async function validateRows<Row>(
 ): Promise<ImportResult<Row>> {
   const { signal } = options;
   const issues: ImportIssue[] = [...base.issues];
+  const data: Row[] = [];
   const errorRows = new Set(issues.filter((i) => i.severity === 'error' && i.row > 0).map((i) => i.row));
+  const unmapped = new Set(issues.filter((i) => i.code === 'MAPPING_MISSING' && i.field !== undefined).map((i) => i.field!));
+  const failedCells = new Map<number, Set<string>>();
+  for (const i of issues) {
+    if (i.severity !== 'error' || i.row === 0 || i.field === undefined) continue;
+    let set = failedCells.get(i.row);
+    if (!set) failedCells.set(i.row, (set = new Set()));
+    set.add(i.field);
+  }
+  const columns = columnsOf(base);
+  if (unmapped.size > 0) keepSamples(data, base.data);
   const fieldChecks = options.schema
     ? Object.entries(options.schema.fields).filter((e): e is [string, FieldSpec & { validate: NonNullable<FieldSpec['validate']> }] => typeof e[1].validate === 'function')
     : [];
   const validator = options.validate;
   const stop = options.validation === 'stop';
-  const data: Row[] = [];
   const rowNumbers: number[] = [];
   const n = base.data.length;
   for (let i = 0; i < n; i++) {
     if (i % 256 === 0) throwIfAborted(signal);
     const rowNumber = base.rowNumbers[i]!;
     let row: unknown = base.data[i];
+    const failed = failedCells.get(rowNumber);
+    const blocked = (field: string | undefined): boolean => field !== undefined && (unmapped.has(field) || failed?.has(field) === true);
     const found: ImportIssue[] = [];
     for (const [field, spec] of fieldChecks) {
+      if (blocked(field)) continue;
       const message = spec.validate((row as Record<string, unknown>)[field]);
       if (message !== undefined) found.push({ row: rowNumber, field, code: 'INVALID', message, severity: 'error' });
     }
@@ -219,10 +272,13 @@ async function validateRows<Row>(
       }
       throwIfAborted(signal);
     }
-    issues.push(...found);
+    issues.push(...found.filter((f) => !blocked(f.field)).map((f) => locate(f, columns)));
+    // Blocked fields' issues are dropped, but the row still fails: its engine error, or the validator, says so.
     const invalid = errorRows.has(rowNumber) || found.some((f) => f.severity === 'error');
     if (invalid && stop) {
-      const rowIssues = issues.filter((x) => x.row === rowNumber);
+      let rowIssues = issues.filter((x) => x.row === rowNumber);
+      // Only blocked fields failed: the file-level MAPPING_MISSING issues explain it.
+      if (rowIssues.length === 0) rowIssues = issues.filter((x) => x.code === 'MAPPING_MISSING');
       throw new ValidationError('VALIDATION_FAILED', `Row ${rowNumber} is not valid: ${rowIssues.map((x) => x.message).join('; ')}`, { details: { issues: rowIssues } });
     }
     if (!invalid) {

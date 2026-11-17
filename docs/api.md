@@ -172,7 +172,8 @@ export interface ImportMeta {
 
 export interface ImportIssue {
   row: number;                // spreadsheet row number (1-based); 0 for file-level issues
-  field?: string;             // field or column key
+  field?: string;             // the key in data rows: the schema field, or the column key without a schema
+  column?: string;            // the source column key (as in ColumnMapping), for cell- and column-level issues
   ref?: string;               // 'C17'
   code: string;               // 'REQUIRED', 'TYPE', 'ERROR_CELL', 'MAPPING_MISSING', 'INVALID' (a validator's issue without a code), or the validator's own code
   message: string;
@@ -302,7 +303,7 @@ Applying a mapping is a pure function of the dataset (`applyMapping`), so changi
 type RowCheck = ImportIssueInput[] | ImportIssueInput | string | undefined;
 export type RowValidator<Row> = (row: Row, ctx: { rowNumber: number; index: number }) => RowCheck | Promise<RowCheck>;
 
-export interface ImportIssueInput { field?: string; message: string; code?: string; severity?: 'error' | 'warning' }
+export interface ImportIssueInput { field?: string; column?: string; ref?: string; message: string; code?: string; severity?: 'error' | 'warning' }
 
 /** The Standard Schema interface (standardschema.dev), structurally; no dependency. */
 export interface StandardSchemaLike<Output> {
@@ -317,6 +318,8 @@ export interface StandardSchemaLike<Output> {
   - A function: return nothing, a message, or issues.
   - A **Standard Schema** object. Zod 3.24+, Valibot 1.0+ and ArkType 2.0+ implement that interface `[to verify]`, so `validate: z.object({ … })` works without adapters, and the result rows are the schema's output. Its issue paths map to `field` ([Q7](#12-decisions)).
 - **Order:** field-level `FieldSpec.validate` and type issues come first, then the row validator. Issues without a `code` get `'INVALID'`; issues without a `severity` are errors. With a Standard Schema, an issue's `path` gives its `field` (its first segment).
+- **One issue per cell.** Per row and field, the first of these wins: `TYPE`, `REQUIRED` (both javascript-excel's), `FieldSpec.validate`, the row validator. A field with an engine error in the row is not checked again: its `FieldSpec.validate` isn't called, and validator issues on it (Standard Schema or function) are dropped, since they could only describe the `null` the engine left there. A required field without a column (`MAPPING_MISSING`) is treated the same way in every row. Issues without a `field` (row-level checks) and issues on other fields are kept. This changes only what is reported: a row that fails still fails.
+- **Validator issues point at the cell.** An issue whose `field` has a column gets that `column` and its `ref` (`'B3'`), unless the validator set them.
 - **Invalid rows.** Rows with an `error` issue are **excluded** from `data` and listed in `issues` with their row number. That includes javascript-excel's own row errors (`TYPE`, `REQUIRED`). `warning` issues keep the row. `validation: 'stop'` rejects at the first error with `VALIDATION_FAILED`, with that row's issues in `details.issues`.
 - **Async validators** are allowed (for example a uniqueness check against a server). They run one row at a time, in order, and check `signal` between rows. The docs will recommend batching remote checks after import rather than per row.
 - Validation runs on the main thread, because functions can't cross into a worker ([§9.3](#93-worker)).
@@ -344,7 +347,7 @@ export function useDataImport<Row = Record<string, unknown>>(defaults?: ImportOp
 ```
 
 - The same contract as react-data-export's `useExcelExport` (RDE §5): stable function identities, an `AbortController` per call linked to `options.signal`, abort on unmount, StrictMode-safe "mounted" tracking, and aborts that are neither errors nor `status: 'error'`.
-- **`'mapping'`** is the only new state. It's entered when a schema is given and the automatic mapping leaves a required field unmapped. `result` then holds the rows mapped so far and the `MAPPING_MISSING` issues. `applyMapping` imports again with the new mapping from the bytes the hook kept in memory, so the file is not read again. Steps 2–8 do run again: forced field types must convert from the file's own values, not from values already converted, so the import isn't split at step 7. The kept bytes are released by `reset()` or the next import.
+- **`'mapping'`** is the only new state. It's entered when a schema is given and the automatic mapping leaves a required field unmapped. `result` then holds the rows mapped so far and the `MAPPING_MISSING` issues; validators don't add issues for the unmapped fields ([§7](#7-validation)). If a validator rejects every row, `data` is empty, but `useColumnMapping` still shows samples from the file ([§8.3](#83-usecolumnmapping-headless)). `applyMapping` imports again with the new mapping from the bytes the hook kept in memory, so the file is not read again. Steps 2–8 do run again: forced field types must convert from the file's own values, not from values already converted, so the import isn't split at step 7. The kept bytes are released by `reset()` or the next import.
 - A new `importFile` call aborts the one in flight. An import replaces the previous result: one file at a time, which is what a form field means.
 
 ### 8.2 `<DataImport>` (unstyled)
@@ -426,7 +429,7 @@ export function useColumnMapping(result: ImportResult<unknown> | null, schema: I
 - State only: the app renders the selects or the drag-and-drop UI. `columns[].sample` holds the first few values (three), so a UI can show "E-mail: ada@…, grace@…".
 - **Where the columns come from.**
   - From a raw result (`previewFile`, or `importFile` without a schema), every column has its title, letter and sample, and the automatic mapping is javascript-excel's `mapColumns`.
-  - From a mapped result (`useDataImport`'s `'mapping'` state), the result's own mapping is the starting point. Mapped columns keep their samples, but the unmapped ones are known only by key (`meta.unmappedColumns`): no letter, no sample.
+  - From a mapped result (`useDataImport`'s `'mapping'` state), the result's own mapping is the starting point. Mapped columns keep their samples, but the unmapped ones are known only by key (`meta.unmappedColumns`): no letter, no sample. While a required field is unmapped, the samples come from the file's rows before validation, so they are there even when the validator rejects every row.
   - So a mapping screen that shows every column's values should start from `previewFile`, then call `importFile(file, { schema, mapping })`.
 - `set(field, column)` throws a `TypeError` for an unknown field or column. A new `result` starts again from its own automatic mapping.
 - Pair it with `useDataImport().applyMapping(mapping)`. A **styled** mapping UI is not in 1.0 ([Q6](#12-decisions)). The playground (RDI-9) shows one built on this hook.

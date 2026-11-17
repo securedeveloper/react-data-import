@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { mapColumns, type ColumnMapping } from 'javascript-excel/import';
 import type { ImportResult, ImportSchema } from './import';
+import { SAMPLE_SIZE, samplesOf } from './samples';
 
 export interface MappingField {
   name: string;
@@ -34,8 +35,6 @@ export interface UseColumnMapping {
   reset(): void;
 }
 
-const SAMPLE_SIZE = 3;
-
 interface Source {
   columns: Array<Omit<MappingColumn, 'takenBy'>>;
   auto: ColumnMapping;
@@ -46,7 +45,8 @@ function sourceOf(result: ImportResult<unknown> | null, schema: ImportSchema): S
   const names = Object.keys(schema.fields);
   const empty = (): ColumnMapping => Object.fromEntries(names.map((n) => [n, null]));
   if (!result) return { columns: [], auto: empty() };
-  const rows = result.data as Array<Record<string, unknown>>;
+  // While a required field is unmapped, `data` may be empty (a validator rejects every row): use the engine's rows.
+  const rows = samplesOf(result.data);
   const meta = result.meta;
   if (meta.mapping) {
     // A mapped result (useDataImport's 'mapping' state): mapped columns carry
