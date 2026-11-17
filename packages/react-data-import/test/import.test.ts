@@ -81,7 +81,7 @@ describe('schema and validation', () => {
     expect(r.columns.map((c) => c.key)).toEqual(['email', 'name', 'age']);
     expect(r.data).toEqual([row({ email: 'ada@x.org', name: 'Ada', age: 36 }), row({ email: 'grace@x.org', name: 'Grace', age: 45 })]);
     expect(r.rowNumbers).toEqual([2, 3]);
-    expect(r.issues.map((i) => [i.row, i.field, i.code])).toEqual([[4, 'email', 'REQUIRED'], [4, 'email', 'INVALID']]);
+    expect(r.issues.map((i) => [i.row, i.field, i.code])).toEqual([[4, 'email', 'REQUIRED']]);
   });
 
   it('a row validator: messages, issue objects, warnings that keep the row, async', async () => {
@@ -94,7 +94,7 @@ describe('schema and validation', () => {
       },
     });
     expect(r.data.map((d) => d['name'])).toEqual(['Ada', 'Grace']);
-    expect(r.issues.find((i) => i.code === 'AGE')).toEqual({ row: 3, field: 'age', code: 'AGE', message: 'row 3 (#1) is over 40', severity: 'warning' });
+    expect(r.issues.find((i) => i.code === 'AGE')).toEqual({ row: 3, field: 'age', column: 'Age', ref: 'D3', code: 'AGE', message: 'row 3 (#1) is over 40', severity: 'warning' });
   });
 
   it("validation: 'stop' rejects with VALIDATION_FAILED at the first invalid row", async () => {
@@ -127,7 +127,7 @@ describe('schema and validation', () => {
     };
     const r = await importFile('name\nAda\nGrace\n', { validate: upper });
     expect(r.data).toEqual([{ name: 'GRACE' }]);
-    expect(r.issues).toEqual([{ row: 2, field: 'name', code: 'INVALID', message: 'too short', severity: 'error' }]);
+    expect(r.issues).toEqual([{ row: 2, field: 'name', column: 'name', ref: 'A2', code: 'INVALID', message: 'too short', severity: 'error' }]);
   });
 
   it('an unmapped optional field is null in every row, so .nullable() accepts it (javascript-excel JSE-21)', async () => {
@@ -194,5 +194,62 @@ describe('previewFile', () => {
     expect(p.columns.map((c) => c.key)).toEqual(['Name', 'Age']);
     expect((await previewFile(csv)).data).toHaveLength(20);
     await expect(previewFile(csv, { rows: -1 })).rejects.toThrow(TypeError);
+  });
+});
+
+describe('one issue per cell (RDI-12)', () => {
+  const csv = 'Name,Qty\nWidget,5\nGadget,abc\n';
+  const Item = z.object({ name: z.string(), quantity: z.number() });
+  const positive = (v: unknown) => (typeof v === 'number' && v > 0 ? undefined : 'must be a positive number');
+  const typeIssue = { row: 3, field: 'quantity', column: 'Qty', ref: 'B3', code: 'TYPE', message: 'B3: "abc" is not a number.', severity: 'error' };
+
+  it('a forced-type failure gives TYPE only: no REQUIRED, no field check, no schema issue', async () => {
+    for (const quantity of [
+      { aliases: ['Qty'], type: 'number' as const, required: true },
+      { aliases: ['Qty'], type: 'number' as const },
+      { aliases: ['Qty'], type: 'number' as const, required: true, validate: positive },
+    ]) {
+      const r = await importFile(csv, { schema: { fields: { name: { required: true }, quantity } }, validate: Item });
+      expect(r.issues).toEqual([typeIssue]);
+      expect(r.rowNumbers).toEqual([2]);
+    }
+  });
+
+  it('the field check is not called for a blocked cell', async () => {
+    const validate = vi.fn(positive);
+    await importFile(csv, { schema: { fields: { name: {}, quantity: { aliases: ['Qty'], type: 'number', validate } } } });
+    expect(validate.mock.calls).toEqual([[5]]);
+  });
+
+  it('issues on other fields, and row-level issues, are kept', async () => {
+    const Checked = z.object({ name: z.string().min(7), quantity: z.number() }).refine(() => false, { message: 'row check' });
+    const r = await importFile(csv, { schema: { fields: { name: {}, quantity: { aliases: ['Qty'], type: 'number' } } }, validate: Checked });
+    expect(r.issues.filter((i) => i.row === 3).map((i) => [i.code, i.field, i.column, i.ref])).toEqual([
+      ['TYPE', 'quantity', 'Qty', 'B3'],
+      ['INVALID', 'name', 'Name', 'A3'],
+    ]);
+    // Row 2 has no blocked cell: its name issue and the row-level issue (no field, so no column or ref) are both kept.
+    expect(r.issues.filter((i) => i.row === 2).map((i) => [i.code, i.field, i.column, i.ref, i.message])).toEqual([
+      ['INVALID', 'name', 'Name', 'A2', 'Too small: expected string to have >=7 characters'],
+      ['INVALID', undefined, undefined, undefined, 'row check'],
+    ]);
+  });
+
+  it('a function validator: issues on blocked fields are dropped, the others get column and ref', async () => {
+    const r = await importFile(csv, {
+      schema: { fields: { name: {}, quantity: { aliases: ['Qty'], type: 'number' } } },
+      validate: () => [{ field: 'quantity', message: 'bad quantity' }, { field: 'name', message: 'bad name', ref: 'Z9' }],
+    });
+    expect(r.issues.filter((i) => i.row === 3)).toEqual([typeIssue, { row: 3, field: 'name', column: 'Name', ref: 'Z9', code: 'INVALID', message: 'bad name', severity: 'error' }]);
+  });
+
+  it('a required field without a column: MAPPING_MISSING only, not a schema issue per row', async () => {
+    const schema = { fields: { name: { required: true }, quantity: { aliases: ['Qty'], type: 'number' as const }, email: { required: true, validate: () => 'never called' } } };
+    const r = await importFile('Name,Qty\nWidget,5\nGadget,7\n', { schema, validate: z.object({ name: z.string(), quantity: z.number(), email: z.string() }) });
+    expect(r.issues).toEqual([{ row: 0, field: 'email', code: 'MAPPING_MISSING', message: 'No column for the required field "email".', severity: 'error' }]);
+    // Which rows are valid doesn't change: the validator still rejects them.
+    expect(r.data).toEqual([]);
+    const err = await importFile('Name,Qty\nWidget,5\n', { schema, validate: z.object({ email: z.string() }), validation: 'stop' }).catch((e) => e);
+    expect(err).toMatchObject({ code: 'VALIDATION_FAILED', details: { issues: [expect.objectContaining({ code: 'MAPPING_MISSING', field: 'email' })] } });
   });
 });

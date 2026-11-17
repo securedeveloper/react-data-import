@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { StrictMode, useEffect } from 'react';
-import { useDataImport, type ImportResult, type UseDataImport } from '../src/index';
+import { useDataImport, type ImportResult, type StandardSchemaLike, type UseDataImport } from '../src/index';
 
 function Probe({ api }: { api: { current: UseDataImport<Record<string, unknown>> | null } }) {
   const hook = useDataImport();
@@ -61,6 +61,23 @@ describe('useDataImport', () => {
     expect(api.current!.result!.data).toEqual([Object.assign(Object.create(null), { email: 'ada@x.org', name: 'Ada' })]);
     expect(api.current!.result!.meta.fileName).toBe('p.csv');
     expect(read).toHaveBeenCalledTimes(1);
+  });
+
+  it("'mapping' with a Standard Schema validator lists only MAPPING_MISSING (RDI-12)", async () => {
+    const { api, status } = setup();
+    const schema = { fields: { email: { required: true }, name: {} } };
+    const validate: StandardSchemaLike<Record<string, unknown>> = { '~standard': { version: 1 as const, vendor: 'test', validate: (v: unknown) => (typeof (v as { email?: unknown }).email === 'string' ? { value: v as Record<string, unknown> } : { issues: [{ message: 'email: expected string', path: ['email'] }] }) } };
+    await act(async () => {
+      await api.current!.importFile('Mail,Name\nada@x.org,Ada\ngrace@x.org,Grace\n', { schema, validate });
+    });
+    expect(status()).toBe('mapping');
+    expect(api.current!.result!.issues.map((i) => [i.code, i.field])).toEqual([['MAPPING_MISSING', 'email']]);
+    await act(async () => {
+      await api.current!.applyMapping({ email: 'Mail' });
+    });
+    expect(status()).toBe('done');
+    expect(api.current!.result!.issues).toEqual([]);
+    expect(api.current!.result!.data).toHaveLength(2);
   });
 
   it('applyMapping before any import rejects with a TypeError', async () => {
