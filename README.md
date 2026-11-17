@@ -39,14 +39,15 @@ Watch the repository for 1.0.0.
     )}
   </DataImport>
   ```
-- **Playground:** [`apps/playground`](apps/playground) runs the whole flow in the browser: drop a file, preview it, map columns, validate with Zod. It isn't deployed yet; run it with `npm run dev -w playground`.
+- **Playground:** try the whole flow (drop a file, preview it, map columns, validate with Zod) at https://react-data-import-playground.vercel.app/ ([`securedeveloper/react-data-import-playground`](https://github.com/securedeveloper/react-data-import-playground), which uses the published package). [`apps/playground`](apps/playground) is the in-repo dev sandbox of the same flow, tested in CI and not deployed; run it with `npm run dev -w playground`.
 - **npm tags:** `next` is `1.0.0-alpha.2`. `latest` stays on the `0.0.1` name placeholder until 1.0.0, so a plain `npm install react-data-import` doesn't give you a prerelease.
 
 ## Repository layout
 
 ```
 packages/react-data-import/   the published library (TypeScript, ESM + CJS + .d.ts, "use client")
-apps/playground/              Vite + React 19 demo: drop, preview, map, validate (deployed to Vercel later)
+apps/playground/              Vite + React 19 dev sandbox, tested in CI (the public playground is
+                              securedeveloper/react-data-import-playground)
 scripts/                      tarball smoke test, consumer TypeScript matrix, release helpers
 docs/api.md                   the 1.0 API design
 ```
