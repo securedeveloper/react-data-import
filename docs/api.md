@@ -222,10 +222,10 @@ Misuse (an unknown `format`, a `header.rows` below 1, both `mapping` and an unma
 - `false`: no header. Keys and titles are the column letters.
 
 **Detection** (in the engine, `detectHeader`):
-- Scan the first rows of the range (a bounded number, e.g. 25 `[to verify]` by RDI-6 fixtures).
+- Scan the first 25 rows of the used range (javascript-excel's `detectHeader`, `maxScan`). Checked by the RDI-6 fixtures (`packages/react-data-import/test/fixtures/`): blank rows above the table are outside the used range and don't count, but title rows do. A header in rows 1–24 of the scan is found with high confidence. A header in row 25 is found with `confidence: 'low'`, because no data row is left inside the scan. Below that, detection falls back to row 0 (low), and `header: n` reads it. Real exports put a few rows at most above the header, so 25 stays.
 - Skip leading **title rows**: rows with a single non-empty cell, or one merged cell spanning the table.
 - Pick the first row whose non-empty cells are mostly text and at least as wide as the data rows below it, where the rows below differ in kind (numbers, dates, booleans) in at least one column.
-- When several rows above the data are all text and the upper ones are merged across columns, report a multi-row header.
+- When several rows above the data are all text and the upper ones are merged across columns, report a multi-row header. Without merges (always the case in CSV), a two-row header is **not** detected: the first row becomes the header and the second a data row, with `confidence: 'high'`. Pass `header: { rows: 2 }` for those files (RDI-6, `two-header-rows.csv`).
 - Return the rows, plus `confidence: 'low'` when no row clearly qualifies; then it falls back to row 0. A UI should show the detected header and let the user change it when the confidence is low.
 
 The heuristic is deliberately simple and deterministic, with no scoring weights to tune. Its fixtures are the files in RDI-6: Excel, LibreOffice, Numbers and Google Sheets exports, files with title rows, and react-data-export output with header groups.
