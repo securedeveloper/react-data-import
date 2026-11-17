@@ -1,5 +1,13 @@
 # react-data-import
 
+## 1.0.0-beta.1
+
+A fix release of the 1.0 beta, on javascript-excel 2.0.0-beta.1: two-row CSV headers are detected.
+
+### Patch Changes
+
+- 8316fcb: Depends on javascript-excel `^2.0.0-beta.1`. With `header: 'auto'`, a two-row CSV header is now detected and flattened (`Sales / Q1`), and a group title written over empty cells carries right over its sub-columns (`Q1 / Jan`, `Q1 / Feb`). Before, the second header row was imported as a data row.
+
 ## 1.0.0-beta.0
 
 The first 1.0 beta. react-data-import is feature-complete for 1.0: from here to 1.0.0, only fixes. Built on javascript-excel 2.0.0-beta.0. The API is the one in [docs/api.md](https://github.com/securedeveloper/react-data-import/blob/main/docs/api.md), and the README is now a usage guide, with recipes for Zod, Valibot and ArkType.
