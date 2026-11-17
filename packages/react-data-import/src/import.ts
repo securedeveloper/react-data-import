@@ -167,8 +167,9 @@ function engineSchema(schema: ImportSchema): { fields: Record<string, EngineFiel
   return schema.unmapped ? { fields, unmapped: schema.unmapped } : { fields };
 }
 
+/** A Standard Schema object. ArkType's types are functions with `~standard`, so a function can be one too. */
 function isStandard<Row>(v: unknown): v is StandardSchemaLike<Row> {
-  return typeof v === 'object' && v !== null && '~standard' in v;
+  return (typeof v === 'object' || typeof v === 'function') && v !== null && '~standard' in v;
 }
 
 function toIssues(check: RowCheck, rowNumber: number): ImportIssue[] {
