@@ -1,6 +1,6 @@
 {
   "name": "react-data-import",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "description": "Import .xlsx and .csv files into React apps as { columns, data } datasets. Built on javascript-excel.",
   "license": "MIT",
   "author": "Afzal Ahmad",

@@ -2,7 +2,7 @@
 
 Import `.xlsx` and `.csv` files into React apps as `{ columns, data }` datasets. Built on [javascript-excel](https://github.com/securedeveloper/javascript-excel).
 
-> **1.0 prerelease.** This is `1.0.0-alpha.1` on the `next` tag; the API can still change before 1.0.0. The `latest` tag still points to `0.0.1`, which only reserved the name.
+> **1.0 prerelease.** This is `1.0.0-alpha.2` on the `next` tag; the API can still change before 1.0.0. The `latest` tag still points to `0.0.1`, which only reserved the name.
 
 ```sh
 npm install react-data-import@next
