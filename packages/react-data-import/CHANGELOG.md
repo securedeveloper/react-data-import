@@ -1,5 +1,14 @@
 # react-data-import
 
+## 1.0.0-beta.0
+
+The first 1.0 beta. react-data-import is feature-complete for 1.0: from here to 1.0.0, only fixes. Built on javascript-excel 2.0.0-beta.0. The API is the one in [docs/api.md](https://github.com/securedeveloper/react-data-import/blob/main/docs/api.md), and the README is now a usage guide, with recipes for Zod, Valibot and ArkType.
+
+### Patch Changes
+
+- 96e64e7: ArkType schemas work as `validate`: an ArkType type is a function that carries `~standard`, and it is now validated as a Standard Schema instead of being called as a row function. Valibot and ArkType are tested alongside Zod.
+- Depends on javascript-excel `^2.0.0-beta.0` (was `^2.0.0-alpha.6`).
+
 ## 1.0.0-alpha.2
 
 ### Minor Changes

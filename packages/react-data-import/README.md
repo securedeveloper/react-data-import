@@ -2,7 +2,7 @@
 
 Import `.xlsx` and `.csv` files into React apps as `{ columns, data }` datasets: column mapping to your own fields, validation with a function or any Standard Schema (Zod, Valibot, ArkType), and issues reported by spreadsheet row and cell. Built on [javascript-excel](https://github.com/securedeveloper/javascript-excel).
 
-> **1.0 prerelease.** This is `1.0.0-alpha.2` on the `next` tag; the API can still change before 1.0.0. The `latest` tag still points to `0.0.1`, which only reserved the name.
+> **1.0 beta.** This is `1.0.0-beta.0` on the `next` tag. It is feature-complete for 1.0, and only fixes come before 1.0.0. The `latest` tag still points to `0.0.1`, which only reserved the name.
 
 **Try it:** the [live playground](https://react-data-import-playground.vercel.app/) imports a file, previews it, maps columns and validates with Zod, using the published package.
 
