@@ -66,6 +66,8 @@ export function csvFixtures(): Record<string, Uint8Array> {
     'trailing-empty-columns.csv': utf8('Name,Amount,,,\nAda,1,,,\nGrace,2,,,\n'),
     'title-row.csv': utf8('Sales report 2024\nExported 2024-02-01\n\nRegion,Q1,Q2\nNorth,10,20\nSouth,30,40\n'),
     'two-header-rows.csv': utf8('Region,Sales,Sales\n,Q1,Q2\nNorth,10,20\nSouth,30,40\n'),
+    // react-data-export's header groups written to CSV: no merges, the group title only above its first column.
+    'header-groups.csv': utf8('Region,Q1,,,Q2,\n,Jan,Feb,Mar,Apr,May\nNorth,10,20,30,40,50\nSouth,15,25,35,45,55\n'),
     'blank-rows-before-header.csv': utf8('\n\n\nName,Amount\nAda,1\nGrace,2\n'),
     'blank-delimited-rows-before-header.csv': utf8(',,\n,,\nName,Amount,City\nAda,1,Oslo\nGrace,2,Rome\n'),
     'wide-500-columns.csv': utf8(wide()),
