@@ -72,6 +72,6 @@
     "zod": "^4.6.7"
   },
   "dependencies": {
-    "javascript-excel": "^2.0.0-beta.1"
+    "javascript-excel": "^2.0.0"
   }
 }
