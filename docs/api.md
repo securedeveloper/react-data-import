@@ -181,7 +181,7 @@ export interface ImportIssue {
 }
 ```
 
-- **Round trip with react-data-export.** `columns` is a list of `{ title, key, … }`, which react-data-export accepts as `ColumnDef`s. So `exportDataset(result)` writes the file back. A file written by react-data-export comes back with its rows: `skipTotals: 'auto'` drops the `SUBTOTAL` totals row, and header groups come back flattened ([§5.1](#51-header-row)). A round-trip test belongs in RDI-6.
+- **Round trip with react-data-export.** `columns` is a list of `{ title, key, … }`, which react-data-export accepts as `ColumnDef`s. So `exportDataset(result)` writes the file back. A file written by react-data-export comes back with its rows: `skipTotals: 'auto'` drops the `SUBTOTAL` totals row, and header groups come back flattened ([§5.1](#51-header-row)). `packages/react-data-import/test/round-trip.test.ts` checks this with the published react-data-export (a dev dependency): xlsx with a totals row, header groups, a schema mapping, and CSV.
 - **`rowNumbers` is a parallel array**, so `data` rows hold only the file's columns ([Q13](#12-decisions)). Issues use the same row numbers, so a UI can say "row 17: amount is not a number".
 - **Typing `Row`.** `Row` is what the caller asserts. With a Standard Schema validator ([§7](#7-validation)) it is the schema's output type, and rows that fail are not in `data`. Without one it is a cast, as with `JSON.parse`.
 
