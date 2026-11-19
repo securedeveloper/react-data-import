@@ -31,4 +31,4 @@ export type { ExcelWarning } from 'javascript-excel';
 export { isExcelError } from 'javascript-excel';
 
 /** The version of this package. Kept in step with package.json by `npm run version-packages`. */
-export const version = '1.0.0-beta.1';
+export const version = '1.0.0';
